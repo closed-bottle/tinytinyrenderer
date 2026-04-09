@@ -274,7 +274,7 @@ bool OBJ_Geometry::DrawWithFlatLight(TGA_Image & _image)
 		Color color(light_color, light_color, light_color);
 
 		Triangle::TriangleRasterize(_image, triangle, color);
-		std::cout << i++ << " of " << maximum << " triangles." << std::endl;
+		//std::cout << i++ << " of " << maximum << " triangles." << std::endl;
 	}
 
 	return true;

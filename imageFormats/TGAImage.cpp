@@ -192,7 +192,7 @@ bool TGA_Image::CompressRLE(std::ofstream & _output_file)
 
 
 		chunck_begin = chunck_begin + chunk_size;
-		std::cout << (static_cast<float>(nPixels) / maximum) * 100.f << "% remaining." << std::endl;
+		//std::cout << (static_cast<float>(nPixels) / maximum) * 100.f << "% remaining." << std::endl;
 	}
 	
 
