@@ -8,37 +8,37 @@
 #include "OBJGeometry.h"
 #include "../lineAlgorithm/LineRasterizeAlgorithm.h"
 
-void OBJ_Geometry::SetWidth(float _new_width)
+void OBJGeometry::SetWidth(float _new_width)
 {
 	width_ = _new_width;
 }
 
-void OBJ_Geometry::SetHeight(float _new_height)
+void OBJGeometry::SetHeight(float _new_height)
 {
 	height_ = _new_height;
 }
 
-void OBJ_Geometry::SetWidthHeight(float _new_width, float _new_height)
+void OBJGeometry::SetWidthHeight(float _new_width, float _new_height)
 {
 	SetWidth(_new_width);
 	SetHeight(_new_height);
 }
 
-void OBJ_Geometry::SetZoom(float _new_zoom)
+void OBJGeometry::SetZoom(float _new_zoom)
 {
 	zoom_ = _new_zoom;
 }
 
-OBJ_Geometry::OBJ_Geometry(std::string _filename)
+OBJGeometry::OBJGeometry(std::string _filename)
 {
 	LoadFromOBJFile(_filename);
 }
 
-OBJ_Geometry::OBJ_Geometry()
+OBJGeometry::OBJGeometry()
 {
 }
 
-bool OBJ_Geometry::LoadFromOBJFile(std::string _filename)
+bool OBJGeometry::LoadFromOBJFile(std::string _filename)
 {
 	std::ifstream input_file(_filename);
 
@@ -177,7 +177,7 @@ bool OBJ_Geometry::LoadFromOBJFile(std::string _filename)
 	return true;
 }
 
-bool OBJ_Geometry::DrawWireframe(TGA_Image & _image, Color _color)
+bool OBJGeometry::DrawWireframe(TGAImage & _image, Color _color)
 {
 	int i = 0;
 	const auto maximum = wire_frame_.size();
@@ -191,7 +191,7 @@ bool OBJ_Geometry::DrawWireframe(TGA_Image & _image, Color _color)
 	return true;
 }
 
-bool OBJ_Geometry::DrawWireframeWithTriangle(TGA_Image & _image, Color _color)
+bool OBJGeometry::DrawWireframeWithTriangle(TGAImage & _image, Color _color)
 {
 	int i = 0;
 	const auto maximum = faces_.size();
@@ -213,7 +213,7 @@ bool OBJ_Geometry::DrawWireframeWithTriangle(TGA_Image & _image, Color _color)
 	return true;
 }
 
-bool OBJ_Geometry::DrawWithRandomColor(TGA_Image & _image)
+bool OBJGeometry::DrawWithRandomColor(TGAImage & _image)
 {
 	int i = 0;
 	const auto maximum = faces_.size();
@@ -235,7 +235,7 @@ bool OBJ_Geometry::DrawWithRandomColor(TGA_Image & _image)
 	return true;
 }
 
-bool OBJ_Geometry::DrawWithFlatColor(TGA_Image & _image, Color _color)
+bool OBJGeometry::DrawWithFlatColor(TGAImage & _image, Color _color)
 {
 	int i = 0;
 	const auto maximum = faces_.size();
@@ -255,7 +255,7 @@ bool OBJ_Geometry::DrawWithFlatColor(TGA_Image & _image, Color _color)
 	return true;
 }
 
-bool OBJ_Geometry::DrawWithFlatLight(TGA_Image & _image)
+bool OBJGeometry::DrawWithFlatLight(TGAImage & _image)
 {
 	int i = 0;
 	const auto maximum = faces_.size();

@@ -38,6 +38,6 @@ public:
 	void SetNormal(Vec3f& _normal);
 	void SetNormal(Vec3f _normal);
 
-	static void TriangleRasterize(TGA_Image& _image, Triangle& _triangle, Color& _color);
-	static void TriangleOutlineRasterize(TGA_Image& _image, Triangle& _triangle, Color& _color);
+	static void TriangleRasterize(TGAImage& _image, Triangle& _triangle, Color& _color);
+	static void TriangleOutlineRasterize(TGAImage& _image, Triangle& _triangle, Color& _color);
 };

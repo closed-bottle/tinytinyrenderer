@@ -7,7 +7,7 @@
 #include "Color.h"
 #include "../Math/Vector.h"
 
-class TGA_Image
+class TGAImage
 {
     // header : 
     // ID Length 1 byte
@@ -65,9 +65,9 @@ class TGA_Image
 	std::vector<Color> data_;
 
 public:
-	TGA_Image(std::string _filename);
-	TGA_Image(int _width, int _height, int _byte_per_pixel);
-	~TGA_Image();
+	TGAImage(std::string _filename);
+	TGAImage(int _width, int _height, int _byte_per_pixel);
+	~TGAImage();
 	bool LoadFromTGAFile(std::string _filename);
 	bool SaveToTGAFile(std::string _filename, bool is_compress);
 	Color GetPixel(unsigned int _x_coord, unsigned int _y_coord);

@@ -3,7 +3,10 @@ Tiny software renderer for hobbyst, with minimal features.
 
 It is under construction for now, I'm revisiting it after 7 years.
 
+Current build is broken, needs full refactoring. 
+
 ## Features
+ - No graphics API.
  - CPU rasterization.
  - OBJ loading.
  - TGA output writing.

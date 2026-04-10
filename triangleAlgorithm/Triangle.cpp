@@ -131,9 +131,8 @@ void Triangle::SetNormal(Vec3f _normal)
 	face_normal_ = _normal;
 }
 
-void Triangle::TriangleRasterize(TGA_Image& _image, Triangle& _triangle, Color& _color)
+void Triangle::TriangleRasterize(TGAImage& _image, Triangle& _triangle, Color& _color)
 {
-	// TODO : Optimizing. 
 	// Some pixel dulplicated.
 	Line topToMid(Vec2i(static_cast<int>(_triangle.top_.x), static_cast<int>(_triangle.top_.y)),
 				  Vec2i(static_cast<int>(_triangle.middle_.x), static_cast<int>(_triangle.middle_.y)));
@@ -223,7 +222,7 @@ void Triangle::TriangleRasterize(TGA_Image& _image, Triangle& _triangle, Color& 
 }
 
 
-void Triangle::TriangleOutlineRasterize(TGA_Image& _image, Triangle& _triangle, Color& _color)
+void Triangle::TriangleOutlineRasterize(TGAImage& _image, Triangle& _triangle, Color& _color)
 {
 	// TODO : Optimizing. 
 	// Some pixel dulplicated.

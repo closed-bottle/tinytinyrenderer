@@ -122,7 +122,7 @@ namespace Bresenhams
 		}
 	}
 
-	void LineRasterize(TGA_Image& _target, const Vec2i& _start, const Vec2i& _end, const Color& _color)
+	void LineRasterize(TGAImage& _target, const Vec2i& _start, const Vec2i& _end, const Color& _color)
 	{
 		Line line(_start, _end);
 
@@ -142,7 +142,7 @@ namespace Bresenhams
 		}
 	}
 
-	void LineRasterize(TGA_Image & _target, ::Line _line, const Color & _color)
+	void LineRasterize(TGAImage & _target, ::Line _line, const Color & _color)
 	{
 		Line line(_line);
 

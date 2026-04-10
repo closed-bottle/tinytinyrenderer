@@ -1,4 +1,6 @@
 #pragma once
+#pragma pack(push,1) // for tight pack for struct.
+
 struct Color
 {
 	unsigned char red;
@@ -12,3 +14,5 @@ struct Color
 	bool operator==(Color _input);
 	bool operator!=(Color _input);
 };
+
+#pragma pack(pop)

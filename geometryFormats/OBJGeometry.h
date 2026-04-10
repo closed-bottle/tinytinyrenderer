@@ -6,7 +6,7 @@
 #include "../triangleAlgorithm/Triangle.h"
 #include "../imageFormats/TGAImage.h"
 
-class OBJ_Geometry
+class OBJGeometry
 {
 	// Reference : http://paulbourke.net/dataformats/obj/
 	// File structure
@@ -76,8 +76,8 @@ class OBJ_Geometry
 	float height_ = 100.0f;
 	float zoom_ = 1.0f;
 public: 
-	OBJ_Geometry(std::string _filename);
-	OBJ_Geometry();
+	OBJGeometry(std::string _filename);
+	OBJGeometry();
 
 	void SetWidth(float _new_width);
 	void SetHeight(float _new_height);
@@ -85,9 +85,9 @@ public:
 	void SetZoom(float _new_zoom);
 	
 	bool LoadFromOBJFile(std::string _filename);
-	bool DrawWireframe(TGA_Image& _image, Color _color);
-	bool DrawWireframeWithTriangle(TGA_Image& _image, Color _color);
-	bool DrawWithRandomColor(TGA_Image& _image);
-	bool DrawWithFlatColor(TGA_Image& _image, Color _color);
-	bool DrawWithFlatLight(TGA_Image& _image);
+	bool DrawWireframe(TGAImage& _image, Color _color);
+	bool DrawWireframeWithTriangle(TGAImage& _image, Color _color);
+	bool DrawWithRandomColor(TGAImage& _image);
+	bool DrawWithFlatColor(TGAImage& _image, Color _color);
+	bool DrawWithFlatLight(TGAImage& _image);
 };

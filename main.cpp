@@ -36,9 +36,9 @@ TimeStamp& TimeStamp::instance = gTimeStamp;
 int main(int argc, const char* argv[])
 {
 	TimeStamp::Start();
-	TGA_Image image_light(width, height, 3);
+	TGAImage image_light(width, height, 3);
 
-	OBJ_Geometry obj;
+	OBJGeometry obj;
 	obj.SetZoom(1000.0f);
 	obj.SetWidthHeight(width, height);
 	obj.LoadFromOBJFile("suzanne.obj");

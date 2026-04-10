@@ -1,5 +1,3 @@
-#pragma pack(push,1) // for tight pack for struct.
-
 #include <algorithm>
 #include <utility>
 #include <iostream>
@@ -10,13 +8,13 @@
 
 #include <cstring>
 
-void TGA_Image::FlipVertically()
+void TGAImage::FlipVertically()
 {
 	std::reverse(std::begin(data_), std::end(data_));
 	FlipHorizontally();
 }
 
-void TGA_Image::FlipHorizontally()
+void TGAImage::FlipHorizontally()
 {
 	int nPixel = width_ * height_;
 	for (int current_line = 0; current_line < nPixel; current_line += width_)
@@ -28,7 +26,7 @@ void TGA_Image::FlipHorizontally()
 	
 }
 
-bool TGA_Image::UncompressRLE(std::ifstream& _input_file)
+bool TGAImage::UncompressRLE(std::ifstream& _input_file)
 {
 	auto nPixels = width_ * height_;
 
@@ -130,7 +128,7 @@ bool TGA_Image::UncompressRLE(std::ifstream& _input_file)
 	return true;
 }
 
-bool TGA_Image::CompressRLE(std::ofstream & _output_file)
+bool TGAImage::CompressRLE(std::ofstream & _output_file)
 {
 	auto nPixels = width_ * height_;
 	float maximum = static_cast<float>(nPixels);
@@ -199,12 +197,12 @@ bool TGA_Image::CompressRLE(std::ofstream & _output_file)
 	return true;
 }
 
-TGA_Image::TGA_Image(std::string _filename) : filename_(_filename)
+TGAImage::TGAImage(std::string _filename) : filename_(_filename)
 {
 	LoadFromTGAFile(_filename);
 }
 
-TGA_Image::TGA_Image(int _width, int _height, int _byte_per_pixel) 
+TGAImage::TGAImage(int _width, int _height, int _byte_per_pixel)
 	: width_(_width), height_(_height), byte_per_pixel(_byte_per_pixel)
 {
 	header_.image_type_ = _byte_per_pixel;
@@ -217,12 +215,12 @@ TGA_Image::TGA_Image(int _width, int _height, int _byte_per_pixel)
 		data_.push_back(Color());
 }
 
-TGA_Image::~TGA_Image()
+TGAImage::~TGAImage()
 {
 	data_.clear();
 }
 
-bool TGA_Image::LoadFromTGAFile(std::string _filename)
+bool TGAImage::LoadFromTGAFile(std::string _filename)
 {
 	data_.clear();
 
@@ -350,7 +348,7 @@ bool TGA_Image::LoadFromTGAFile(std::string _filename)
 	return true;
 }
 
-bool TGA_Image::SaveToTGAFile(std::string _filename, bool is_compress)
+bool TGAImage::SaveToTGAFile(std::string _filename, bool is_compress)
 {
 	unsigned char developer_area[] = { 0, 0, 0, 0 }; // Let dev area empty.
 	unsigned char extension_area[] = { 0, 0, 0, 0 }; // Let ext area empty.
@@ -437,7 +435,7 @@ bool TGA_Image::SaveToTGAFile(std::string _filename, bool is_compress)
 	return true;
 }
 
-Color TGA_Image::GetPixel(unsigned int _x_coord, unsigned int _y_coord)
+Color TGAImage::GetPixel(unsigned int _x_coord, unsigned int _y_coord)
 {
 	if (!IsInsideBoundary(_x_coord, _y_coord))
 	{
@@ -448,7 +446,7 @@ Color TGA_Image::GetPixel(unsigned int _x_coord, unsigned int _y_coord)
 	return data_[((width_ * _y_coord) - 1) + _x_coord];
 }
 
-void TGA_Image::SetPixel(unsigned int _x_coord, unsigned int _y_coord, Color _color)
+void TGAImage::SetPixel(unsigned int _x_coord, unsigned int _y_coord, Color _color)
 {
 	if (!IsInsideBoundary(_x_coord, _y_coord))
 		return;
@@ -456,16 +454,16 @@ void TGA_Image::SetPixel(unsigned int _x_coord, unsigned int _y_coord, Color _co
 	data_[(width_ * _y_coord) + _x_coord] = _color;
 }
 
-short TGA_Image::GetWidth()
+short TGAImage::GetWidth()
 {
 	return width_;
 }
-short TGA_Image::GetHeight()
+short TGAImage::GetHeight()
 {
 	return height_;
 }
 
-bool TGA_Image::IsInsideBoundary(unsigned int _x_coord, unsigned int _y_coord)
+bool TGAImage::IsInsideBoundary(unsigned int _x_coord, unsigned int _y_coord)
 {
 	if (_x_coord >= static_cast<unsigned int>(width_))
 	{
