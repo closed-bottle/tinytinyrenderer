@@ -6,7 +6,6 @@
 #include <utility>
 #include <algorithm>
 #include "OBJGeometry.h"
-#include "../lineAlgorithm/LineRasterizeAlgorithm.h"
 
 void OBJGeometry::SetWidth(float _new_width)
 {
@@ -126,6 +125,7 @@ bool OBJGeometry::LoadFromOBJFile(std::string _filename)
 			}
 			else if (stream_segment == "f") // Vertex normal
 			{
+				/*
 				float half_width = width_ / 2;
 				float half_height = height_ / 2;
 				// First line.
@@ -165,7 +165,7 @@ bool OBJGeometry::LoadFromOBJFile(std::string _filename)
 					
 				wire_frame_.push_back(Line(Vec2i(static_cast<int>(endVec3.x + half_width), static_cast<int>(endVec3.y + half_height)), 
 										   Vec2i(static_cast<int>(veryFirstVec3.x + half_width), static_cast<int>(veryFirstVec3.y + half_height))));
-
+*/
 				continue;
 			}
 		}
@@ -173,109 +173,6 @@ bool OBJGeometry::LoadFromOBJFile(std::string _filename)
 	}
 	
 
-
-	return true;
-}
-
-bool OBJGeometry::DrawWireframe(TGA & _image, Color _color)
-{
-	int i = 0;
-	const auto maximum = wire_frame_.size();
-	for (auto line : wire_frame_)
-	{
-		Bresenhams::LineRasterize(_image, line, _color);
-		std::cout << i++ << " of " << maximum << " lines." << std::endl;
-	}
-		
-
-	return true;
-}
-
-bool OBJGeometry::DrawWireframeWithTriangle(TGA & _image, Color _color)
-{
-	int i = 0;
-	const auto maximum = faces_.size();
-	auto view = Vec3f(0.0f, 0.0f, -1.0f);
-
-	for (auto& triangles : faces_)
-	{
-		auto normal = triangles.GetNormal();
-		if (Vec3f::DotProduct(normal, view) < 0.0f)
-			continue;
-
-		Triangle::TriangleOutlineRasterize(_image, triangles, _color);
-		std::cout << i++ << " of " << maximum << " triangles." << std::endl;
-
-		//_image.SaveToTGAFile(std::to_string(i) + ".tga", true);
-	}
-
-
-	return true;
-}
-
-bool OBJGeometry::DrawWithRandomColor(TGA & _image)
-{
-	int i = 0;
-	const auto maximum = faces_.size();
-
-	std::random_device rd;
-	std::mt19937_64 rng(rd());
-
-	std::uniform_int_distribution<int> range(0, 255);
-
-
-
-	for (auto triangles : faces_)
-	{
-		Color rand_color(range(rng), range(rng), range(rng));
-		Triangle::TriangleRasterize(_image, triangles, rand_color);
-		std::cout << i++ << " of " << maximum << " triangles." << std::endl;
-	}
-
-	return true;
-}
-
-bool OBJGeometry::DrawWithFlatColor(TGA & _image, Color _color)
-{
-	int i = 0;
-	const auto maximum = faces_.size();
-	auto view = Vec3f(0.0f, 0.0f, -1.0f);
-
-	for (auto& triangle : faces_)
-	{
-		auto normal = triangle.GetNormal();
-		if (Vec3f::DotProduct(normal, view) < 0.0f)
-			continue;
-
-		
-		Triangle::TriangleRasterize(_image, triangle, _color);
-		std::cout << i++ << " of " << maximum << " triangles." << std::endl;
-	}
-
-	return true;
-}
-
-bool OBJGeometry::DrawWithFlatLight(TGA & _image)
-{
-	int i = 0;
-	const auto maximum = faces_.size();
-	auto view = Vec3f(0.0f, 0.0f, -1.0f);
-
-	for (auto& triangle : faces_)
-	{
-		Vec3f normal = triangle.GetNormal();
-		normal.Normalize();
-		if (Vec3f::DotProduct(normal, view) < 0.0f)
-			continue;
-
-		float light_amount = Vec3f::DotProduct(normal, view);
-		int light_color = static_cast<int>(255 * light_amount);
-
-		Color color(light_color, light_color, light_color);
-
-		Triangle::TriangleRasterize(_image, triangle, color);
-		//std::cout << i++ << " of " << maximum << " triangles." << std::endl;
-	}
 
 	return true;
 }

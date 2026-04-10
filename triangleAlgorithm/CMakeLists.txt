@@ -1,2 +1,2 @@
 ﻿project(triangleAlgorithm)
-add_library(triangleAlgorithm Triangle.cpp)
+#add_library(triangleAlgorithm)

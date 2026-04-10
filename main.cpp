@@ -1,11 +1,12 @@
-#include "fileFormats/TGA.h"
+#include "renderUtils/Memory.h"
+//#include "fileFormats/TGA.h"
 #include "geometryFormats/OBJGeometry.h"
 #include <iostream>
 #include <string>
 #include <chrono>
 
-constexpr int width = 3000;
-constexpr int height = 2000;
+#include "fileFormats/FileWriter.h"
+#include "renderUtils/Image.h"
 
 
 // Borrowed from special-lamp library.
@@ -33,19 +34,19 @@ std::chrono::steady_clock::time_point TimeStamp::end_;
 TimeStamp gTimeStamp;
 TimeStamp& TimeStamp::instance = gTimeStamp;
 
+constexpr int width = 3000;
+constexpr int height = 2500;
+constexpr int channel = 3;
+
 int main(int argc, const char* argv[])
 {
 	TimeStamp::Start();
-	TGA image_light(width, height, 3);
 
-	OBJGeometry obj;
-	obj.SetZoom(1000.0f);
-	obj.SetWidthHeight(width, height);
-	obj.LoadFromOBJFile("suzanne.obj");
-	obj.DrawWithFlatLight(image_light);
 
-	image_light.FlipVertically();
-	image_light.SaveToTGAFile("suzanne_light.tga", true);
+	Memory memory(width * height * channel);
+	Image<PixelFormat::R8G8B8> render_target(memory, width, height);
+
+	FileWriter::WriteImageToFile<FileWriter::FFormat::TGACompressed>("fwriter.tga", render_target);
 
 	TimeStamp::End();
 	std::cout << "Total : " << TimeStamp::Duration() << std::endl;

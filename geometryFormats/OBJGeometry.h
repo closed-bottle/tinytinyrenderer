@@ -2,9 +2,6 @@
 #include <vector>
 #include <string>
 #include "../math/Vector.h"
-#include "../lineAlgorithm/Line.h"
-#include "../triangleAlgorithm/Triangle.h"
-#include "../fileFormats/TGA.h"
 
 class OBJGeometry
 {
@@ -69,8 +66,7 @@ class OBJGeometry
 	std::vector<Vec3f> geometric_vertices_;
 	std::vector<Vec3f> texture_vertices_;
 	std::vector<Vec3f> vertex_normals_;
-	std::vector<Line> wire_frame_;
-	std::vector<Triangle> faces_;
+
 
 	float width_ = 100.0f;
 	float height_ = 100.0f;
@@ -85,9 +81,4 @@ public:
 	void SetZoom(float _new_zoom);
 	
 	bool LoadFromOBJFile(std::string _filename);
-	bool DrawWireframe(TGA& _image, Color _color);
-	bool DrawWireframeWithTriangle(TGA& _image, Color _color);
-	bool DrawWithRandomColor(TGA& _image);
-	bool DrawWithFlatColor(TGA& _image, Color _color);
-	bool DrawWithFlatLight(TGA& _image);
 };
