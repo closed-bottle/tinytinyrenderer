@@ -11,10 +11,7 @@ endif()
 
 add_subdirectory(geometryFormats)
 add_subdirectory(fileFormats)
-add_subdirectory(lineAlgorithm)
-add_subdirectory(math)
-add_subdirectory(triangleAlgorithm)
-
+add_subdirectory(renderUtils)
 add_executable(tinytinyrenderer main.cpp)
 target_link_libraries(tinytinyrenderer PRIVATE geometryFormats fileFormats math)
 #target_link_libraries(tinytinyrenderer PRIVATE geometryFormats fileFormats lineAlgorithm math triangleAlgorithm)
