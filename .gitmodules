@@ -1,0 +1,3 @@
+[submodule "special-lamp"]
+	path = thirdparty/special-lamp
+	url = https://github.com/closed-bottle/special-lamp.git
