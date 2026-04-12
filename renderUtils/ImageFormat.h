@@ -11,12 +11,12 @@ enum class PixelFormat {
 };
 
 template<PixelFormat f>
-struct ImageFormat {
+struct Texel {
     // Nothing
 };
 
 template<>
-struct ImageFormat<PixelFormat::R8G8B8>{
+struct Texel<PixelFormat::R8G8B8>{
     uint8_t R;
     uint8_t G;
     uint8_t B;

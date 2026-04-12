@@ -15,7 +15,7 @@ class Image {
     Memory& mem_;
     uint32_t width_ = 0;
     uint32_t height_ = 0;
-    ImageFormat<F> format_;
+    Texel<F> format_;
     size_t stride_ = 0;
     uint32_t n_pixels_ = 0;
 public:
