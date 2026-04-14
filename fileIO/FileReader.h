@@ -1,0 +1,9 @@
+﻿#ifndef TINYTINYRENDERER_FILEREADER_H
+#define TINYTINYRENDERER_FILEREADER_H
+
+
+
+
+#include "FileReader_impl.hpp"
+
+#endif //TINYTINYRENDERER_FILEREADER_H

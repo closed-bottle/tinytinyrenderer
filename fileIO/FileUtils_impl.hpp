@@ -1,5 +1,6 @@
 ﻿#include "FileUtils.h"
 
+using namespace Lamp;
 
 void FileUtils::PushBytes(Vector<uint8_t>& _target, uint8_t _stride, const uint8_t* _data) {
     const auto buff = _data;

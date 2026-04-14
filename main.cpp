@@ -1,11 +1,9 @@
 #include "renderUtils/Memory.h"
-//#include "fileFormats/TGA.h"
-#include "fileFormats/OBJGeometry.h"
 #include <iostream>
 #include <string>
 #include <chrono>
 
-#include "fileFormats/FileWriter.h"
+#include "fileIO/FileWriter.h"
 #include "renderUtils/Image.h"
 
 
