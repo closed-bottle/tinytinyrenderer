@@ -16,5 +16,3 @@ add_executable(tinytinyrenderer main.cpp)
 target_link_libraries(tinytinyrenderer PRIVATE renderUtils)
 target_include_directories(tinytinyrenderer PRIVATE thirdparty)
 target_include_directories(renderUtils PRIVATE thirdparty)
-
-#target_link_libraries(tinytinyrenderer PRIVATE geometryFormats fileFormats lineAlgorithm math triangleAlgorithm)

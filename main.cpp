@@ -6,6 +6,7 @@
 #include "fileIO/FileReader.h"
 #include "fileIO/FileWriter.h"
 #include "renderUtils/Image.h"
+#include "renderUtils/Render.h"
 
 
 // Borrowed from special-lamp library.
@@ -42,15 +43,23 @@ int main(int argc, const char* argv[])
 	TimeStamp::Start();
 	Memory image_memory(width * height * channel);
 	Image<PixelFormat::B8G8R8> render_target(image_memory, width, height);
-	//render_target.FillDiffDebug();
-	render_target.FillImage({255, 255, 0});
+	render_target.FillImage({0, 0, 0});
 
 	Geometry geom;
 	Mesh mesh;
 	FileReader::LoadGeometryFile<FFormat::OBJ>("suzanne.obj", geom, mesh);
+
+	Lamp::Mat4f model = Lamp::Mat4f::Scale(1, 1, 1);
+	Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, false);
+	Lamp::Mat4f proj = Lamp::Mat4f::Perspective(3.141592/180.0f * 40.5f,
+		width / height, 0.1f, 1000.0f, true);
+
+	//auto mvp = model * view * proj;
+	auto mvp = proj * view * model;
+	Render::UPointShader uniform(ShaderName::PointShader, mvp);
+	Render::Draw(render_target, geom, mesh, &uniform);
+
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("fwriter.tga", render_target);
-
-
 
 	TimeStamp::End();
 	std::cout << "Total : " << TimeStamp::Duration() << std::endl;

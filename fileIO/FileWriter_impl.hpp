@@ -140,14 +140,14 @@ namespace {
 				}
 			}
 			else {
-				Vector<uint8_t> bytes;
+				Lamp::Vector<uint8_t> bytes;
 				bytes = FileUtils::RLE<128, PF>(_image);
 
 				//for (auto& b : bytes)
 				//	cout << (int)b << '\n';
 				//cout << endl;
 
-				Vector<uint8_t> tga;
+				Lamp::Vector<uint8_t> tga;
 
 
 				uint64_t i = 0;

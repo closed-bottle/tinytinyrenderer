@@ -16,6 +16,7 @@ public:
 
     size_t Size() const {return bytes_.size();}
     uint8_t* Data() {return bytes_.data();}
+    const uint8_t* Data() const {return bytes_.data();}
 };
 
 

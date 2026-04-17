@@ -1,8 +1,6 @@
 ﻿#include "FileUtils.h"
 
-using namespace Lamp;
-
-void FileUtils::PushBytes(Vector<uint8_t>& _target, uint8_t _stride, const uint8_t* _data) {
+void FileUtils::PushBytes(Lamp::Vector<uint8_t>& _target, uint8_t _stride, const uint8_t* _data) {
     const auto buff = _data;
     for (size_t j = 0; j < _stride; ++j)
         _target.push_back(buff[j]);
@@ -14,8 +12,8 @@ void FileUtils::PushBytes(Vector<uint8_t>& _target, uint8_t _stride, const uint8
 // 0 - 0 + Literal
 // anything else - Run Length + Literal
 template<size_t RunLength, PixelFormat PF>
-Vector<uint8_t> FileUtils::RLE(const Image<PF>& _image) {
-    Vector<uint8_t> result;
+Lamp::Vector<uint8_t> FileUtils::RLE(const Image<PF>& _image) {
+    Lamp::Vector<uint8_t> result;
     size_t begin = 0;
     const auto& data = _image.Data();
     auto n = _image.NPixels();

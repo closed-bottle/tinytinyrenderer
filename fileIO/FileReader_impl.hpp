@@ -75,6 +75,7 @@ namespace {
 					vertex.z = std::stof(stream_segment);
 
 					uvs.push_back(vertex);
+					uvs_unsorted.push_back(vertex);
 				}
 				else if (stream_segment == "vn") // Vertex normal
 				{
