@@ -26,3 +26,10 @@ Current build only supports simple line drawing without triangle filling.
  how my older implementation is unoptimized.
   It includes I/O, and output image is 3000 * 2500 with 3 channels.
  - Old(current) build before refactoring takes 6.163932 on average(5 samples)
+
+### Credits
+ The function "plotLine" adapted from :
+ > "A Rasterizing Algorithm for Drawing Curves"
+ > by Alois Zingl
+ > 
+ Licensed under the MIT License.
