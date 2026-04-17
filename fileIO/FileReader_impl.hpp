@@ -59,7 +59,11 @@ namespace {
 					buffer_stream >> stream_segment;
 					vertex.z = std::stof(stream_segment);
 
+					// Push back dummies for attributes, so number of element for each vertex attributes
+					// matches the number of vertices even if there are duplicates.
 					vertices.push_back(vertex);
+					vnormals.push_back({});
+					uvs.push_back({});
 				}
 				else if (stream_segment == "vt") // Texture vertex
 				{
@@ -74,7 +78,6 @@ namespace {
 					buffer_stream >> stream_segment;
 					vertex.z = std::stof(stream_segment);
 
-					uvs.push_back(vertex);
 					uvs_unsorted.push_back(vertex);
 				}
 				else if (stream_segment == "vn") // Vertex normal
@@ -91,30 +94,32 @@ namespace {
 					vertex.z = std::stof(stream_segment);
 
 					vnormals_unsorted.push_back(vertex);
-					vnormals.push_back(vertex);
 				}
 				else if (stream_segment == "f") // face, process only triangles.
 				{
-					std::getline(buffer_stream, stream_segment, '/');
-					uint32_t v = std::stoi(stream_segment) -1;
-					indices.push_back(v);
+					std::getline(buffer_stream, stream_segment, ' '); // Skip first whitespace
+					while (std::getline(buffer_stream, stream_segment, ' ')) {
+						std::stringstream buffer_stream(stream_segment);
+						std::getline(buffer_stream, stream_segment, '/');
+						uint32_t v = std::stoi(stream_segment) -1;
+						indices.push_back(v);
+
+						// Post process vertices, so index for "v" matches 1:1:1 with "vn" and "vt"
+						// TODO : UVs are most likely 2d vectors instead of 3d.
+						std::getline(buffer_stream, stream_segment, '/');
+						uint32_t vt = 0;
+						if (!stream_segment.empty()) {
+							vt = std::stoi(stream_segment) -1;
+							uvs[v] = uvs_unsorted[vt];
+						}
 
 
-					// Post process vertices, so index for "v" matches 1:1:1 with "vn" and "vt"
-					// TODO : UVs are most likely 2d vectors instead of 3d.
-					std::getline(buffer_stream, stream_segment, '/');
-					uint32_t vt = 0;
-					if (!stream_segment.empty()) {
-						vt = std::stoi(stream_segment) -1;
-						uvs[v] = uvs_unsorted[vt];
-					}
-
-
-					std::getline(buffer_stream, stream_segment, '/');
-					uint32_t vn = 0;
-					if (!stream_segment.empty()) {
-						vn = std::stoi(stream_segment) -1;
-						vnormals[v] = vnormals_unsorted[vn];
+						std::getline(buffer_stream, stream_segment, '/');
+						uint32_t vn = 0;
+						if (!stream_segment.empty()) {
+							vn = std::stoi(stream_segment) -1;
+							vnormals[v] = vnormals_unsorted[vn];
+						}
 					}
 				}
 			}
@@ -130,6 +135,9 @@ namespace {
     	_out_mesh.vertex_count_ = vertices.size();
     	_out_mesh.vertex_offset_
     	= alignof(Lamp::Vec3f) - (reinterpret_cast<uint64_t>(_out_geom.vertex_.Data()) % alignof(Lamp::Vec3f));
+    	_out_mesh.vnormal_count_ = vnormals.size();
+    	_out_mesh.vnormal_offset_
+		= alignof(Lamp::Vec3f) - (reinterpret_cast<uint64_t>(_out_geom.vertex_normal_.Data()) % alignof(Lamp::Vec3f));
     	_out_mesh.index_count_ = indices.size();
     	_out_mesh.index_offset_
     	= alignof(uint32_t) - (reinterpret_cast<uint64_t>(_out_geom.index_.Data()) % alignof(uint32_t));
@@ -139,7 +147,7 @@ namespace {
 			sizeof(Lamp::Vec3f) * vertices.size());
 
     	if (!vnormals.empty()) {
-    		memcpy(_out_geom.vertex_normal_.Data() + _out_mesh.vertex_offset_,
+    		memcpy(_out_geom.vertex_normal_.Data() + _out_mesh.vnormal_offset_,
 				vnormals.data(),
 				sizeof(Lamp::Vec3f) * vnormals.size());
     	}
