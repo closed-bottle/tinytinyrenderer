@@ -1,9 +1,13 @@
-# tinytinyrenderer
-Tiny software renderer for hobbyst, with minimal features.
+# SwRenderer
+ Software renderer for hobbyist, with minimal features.
 
 It is under construction for now, I'm revisiting it after 7 years.
 
-Current build is broken, needs full refactoring. 
+Current build only supports simple line drawing without triangle filling.
+
+> Inspired by tinyrenderer by Dmitry V. Sokolov(ssloy)
+> 
+> https://github.com/ssloy/tinyrenderer
 
 ## Features
  - No graphics API.
@@ -13,13 +17,9 @@ Current build is broken, needs full refactoring.
 
 ![Alt text](suzanne_wireframe.png "Images")
 
+### How to build
 
-
-### Know issuees
- - Depth buffer is not implemented correctly or not implemented at all.
- - Failed writing to file in Release build
- - pragma pack.
-
+### Know issues
  
 ### Measurement
   Note that those benchmarks are not formally taken, and only used to briefly show
