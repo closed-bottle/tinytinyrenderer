@@ -8,6 +8,7 @@
 
 enum class ShaderName {
     PointShader,
+    LineShader,
     Count
 };
 
@@ -22,10 +23,10 @@ public:
         virtual ~ShaderFootprint() {};
     };
 
-    struct UPointShader : ShaderFootprint {
+    struct UMvp : ShaderFootprint {
         Lamp::Mat4f mvp;
 
-        UPointShader(const ShaderName& _sType, const Lamp::Mat4f& _mvp)
+        UMvp(const ShaderName& _sType, const Lamp::Mat4f& _mvp)
             : ShaderFootprint(_sType), mvp(_mvp) {}
     };
 

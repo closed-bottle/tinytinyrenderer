@@ -56,8 +56,14 @@ int main(int argc, const char* argv[])
 
 	//auto mvp = model * view * proj;
 	auto mvp = proj * view * model;
-	Render::UPointShader uniform(ShaderName::PointShader, mvp);
+	Render::UMvp uniform(ShaderName::PointShader, mvp);
 	Render::Draw(render_target, geom, mesh, &uniform);
+
+	uniform = Render::UMvp{ShaderName::LineShader, mvp};
+	Render::Draw(render_target, geom, mesh, &uniform);
+
+
+
 
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("fwriter.tga", render_target);
 

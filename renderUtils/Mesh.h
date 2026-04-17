@@ -7,6 +7,8 @@ struct Mesh {
     Lamp::String object_name_;
     uint64_t vertex_offset_ = 0;
     uint64_t vertex_count_ = 0;
+    uint64_t vnormal_offset_ = 0;
+    uint64_t vnormal_count_ = 0;
     uint64_t index_offset_ = 0;
     uint64_t index_count_ = 0;
     uint8_t material_offset_ = 0;
