@@ -47,12 +47,12 @@ int main(int argc, const char* argv[])
 
 	Geometry geom;
 	Mesh mesh;
-	FileReader::LoadGeometryFile<FFormat::OBJ>("Sphere.obj", geom, mesh);
+	FileReader::LoadGeometryFile<FFormat::OBJ>("suzanne.obj", geom, mesh);
 
-	Lamp::Mat4f model = Lamp::Mat4f::Scale(1.8, 1.8, 1.8);
+	Lamp::Mat4f model = Lamp::Mat4f::Scale(2.8, 2.8, 2.8);
 	Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, false);
 	Lamp::Mat4f proj = Lamp::Mat4f::Perspective(3.141592/180.0f * 40.5f,
-		(float)width / height, 0.1f, 1000.0f, true);
+		(float)width / height, 0.1f, 1000.0f);
 
 
 	auto mvp = proj * view * model;

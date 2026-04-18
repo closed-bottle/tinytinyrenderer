@@ -11,11 +11,15 @@ namespace {
     void ClipSpaceScreenSpace(Image<PF>& _render_target, Lamp::Vec4f& _v) {
         _v /= _v.w;
 
-        // Viewport transform.
-        _v.x *= _render_target.Width();
-        _v.y *= _render_target.Height();
-        _v.x += _render_target.Width()/2;
-        _v.y += _render_target.Height()/2;
+        const float f_width  = static_cast<float>(_render_target.Width());
+        const float f_height = static_cast<float>(_render_target.Height());
+
+        // Flipping y elements here, our window coordinates top left will be 0, 0. when it is -1, 1 in NDC.
+        const Lamp::Mat4f viewport_transform = Lamp::Mat4f::Translate(f_width * .5f, f_height * .5f, 0.0f)
+                                                * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, 1.0f);
+
+        // TODO : How to deal with near and far plane?
+        _v = viewport_transform * _v;
     }
 
     // Note that it is not the proper algorithm to plot points on the screen,
@@ -31,11 +35,7 @@ namespace {
 
             v4 = _uniform->mvp * v4;
 
-            v4 /= v4.w;
-            v4.x *= _render_target.Width();
-            v4.y *= _render_target.Height();
-            v4.x += _render_target.Width()/2;
-            v4.y += _render_target.Height()/2;
+            ClipSpaceScreenSpace(_render_target, v4);
 
 
             if (v4.x > 0 && v4.x < _render_target.Width() && v4.y > 0 && v4.y < _render_target.Height()) {
