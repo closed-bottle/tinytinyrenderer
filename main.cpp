@@ -34,8 +34,8 @@ std::chrono::steady_clock::time_point TimeStamp::end_;
 TimeStamp gTimeStamp;
 TimeStamp& TimeStamp::instance = gTimeStamp;
 
-constexpr int width = 512;
-constexpr int height = 512;
+constexpr int width = 1920;
+constexpr int height = 1080;
 constexpr int channel = 3;
 
 int main(int argc, const char* argv[])
@@ -47,14 +47,14 @@ int main(int argc, const char* argv[])
 
 	Geometry geom;
 	Mesh mesh;
-	FileReader::LoadGeometryFile<FFormat::OBJ>("suzanne.obj", geom, mesh);
+	FileReader::LoadGeometryFile<FFormat::OBJ>("Sphere.obj", geom, mesh);
 
-	Lamp::Mat4f model = Lamp::Mat4f::Scale(1, 1, 1);
+	Lamp::Mat4f model = Lamp::Mat4f::Scale(1.8, 1.8, 1.8);
 	Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, false);
 	Lamp::Mat4f proj = Lamp::Mat4f::Perspective(3.141592/180.0f * 40.5f,
-		width / height, 0.1f, 1000.0f, true);
+		(float)width / height, 0.1f, 1000.0f, true);
 
-	//auto mvp = model * view * proj;
+
 	auto mvp = proj * view * model;
 	Render::UMvp uniform(ShaderName::PointShader, mvp);
 	Render::Draw(render_target, geom, mesh, &uniform);
