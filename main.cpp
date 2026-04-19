@@ -76,6 +76,10 @@ int main(int argc, const char* argv[])
 		depth_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,{0}
 	};
 
+	RenderInfo render_info = {
+		1, &color_att_info, &depth_att_info
+	};
+
 	Pipeline render_pipeline = {WindingOrder::CCW,
 					1, &color_att,
 					1, &depth_att,
@@ -86,10 +90,10 @@ int main(int argc, const char* argv[])
 	// Barrier is not implemented yet.
 	// Scissor is not implemented at this moment, and most likely will not implement.
 	RenderCmd::SetViewport(cmd_buff, viewport);
-	RenderCmd::SetRenderInfo(cmd_buff, 1, &color_att_info, &depth_att_info);
+	RenderCmd::SetRenderInfo(cmd_buff, render_info);
 	RenderCmd::BeginRender(cmd_buff);
 	RenderCmd::BindPipeline(cmd_buff, render_pipeline);
-	RenderCmd::BindUniform(cmd_buff, u_mvp);
+	RenderCmd::BindUniform(cmd_buff, sizeof(u_mvp), u_mvp);
 
 	RenderCmd::BindVertexBuffer(cmd_buff, pos_buffer, 0);
 	RenderCmd::BindIndexBuffer(cmd_buff, index_buffer, 0);

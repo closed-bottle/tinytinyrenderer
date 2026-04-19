@@ -4,6 +4,7 @@
 #include "Image.h"
 #include "Geometry.h"
 #include "Mesh.h"
+#include "RenderBuffer.h"
 #include "special-lamp/lampMath.h++"
 
 enum class ShaderName {
@@ -31,7 +32,9 @@ public:
     };
 
     template<PixelFormat PF>
-    static void Draw(Image<PF>& _render_target, const Geometry& _geom, const Mesh& _mesh, const ShaderFootprint* _uniform);
+    static void Draw(Image<PF>& _render_target,
+                const VertexBuffer& _vb, const IndexBuffer& _ib,
+                const ShaderFootprint* _uniform);
 };
 
 #include "Render_impl.hpp"

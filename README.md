@@ -11,6 +11,7 @@ Current build only supports simple line drawing without triangle filling.
 
 ## Features
  - No graphics API.
+ - Vulkan-like interface.
  - CPU rasterization.
  - OBJ loading.
  - TGA output writing.
@@ -20,7 +21,7 @@ Current build only supports simple line drawing without triangle filling.
 ### How to build
 
 ### Know issues
- 
+ - x64 only.
 ### Measurement
   Note that those benchmarks are not formally taken, and only used to briefly show
  how my older implementation is unoptimized.

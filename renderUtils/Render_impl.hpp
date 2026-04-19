@@ -26,11 +26,11 @@ namespace {
     // it is unstable due to the nature direct casting.
     // Only for quick demonstration.
     template<PixelFormat PF>
-    void DrawPointShader(Image<PF>& _render_target, const Geometry& _geom, const Mesh& _mesh,
+    void DrawPointShader(Image<PF>& _render_target, const VertexBuffer& _vb, const IndexBuffer& _ib,
                          const Render::UMvp* _uniform) {
         // upper left = origin.
-        for (uint64_t i = 0; i < _mesh.vertex_count_; ++i) {
-            auto v3 = *reinterpret_cast<const Lamp::Vec3f*>(_geom.vertex_.Data() + _mesh.vertex_offset_ + (sizeof(Lamp::Vec3f) * i));
+        for (uint64_t i = 0; i < _vb.count_; ++i) {
+            auto v3 = *(static_cast<const Lamp::Vec3f*>(_vb.data_) + (sizeof(Lamp::Vec3f) * i));
             Lamp::Vec4f v4 = {v3.x, v3.y, v3.z, 1};
 
             v4 = _uniform->mvp * v4;
@@ -82,15 +82,14 @@ namespace {
     // Assume primitive is always triangle strip.
     // It can be added to template later if needed to implement other primitives.
     template<PixelFormat PF>
-    void DrawTriangleLineShader(Image<PF>& _render_target, const Geometry& _geom, const Mesh& _mesh,
+    void DrawTriangleLineShader(Image<PF>& _render_target, const VertexBuffer& _vb, const IndexBuffer& _ib,
                          const Render::UMvp* _uniform) {
+        const auto* vertices = static_cast<Lamp::Vec3f*>(_vb.data_);
 
-        const auto* vertices = SampleData<Lamp::Vec3f>(_geom.vertex_.Data(), _mesh.vertex_offset_, 0);
-
-        for (uint64_t i = 0; i < _mesh.index_count_; i += 3) {
-            auto i0 = *SampleData<uint32_t>(_geom.index_.Data(), _mesh.index_offset_, i);
-            auto i1 = *SampleData<uint32_t>(_geom.index_.Data(), _mesh.index_offset_, i+1);
-            auto i2 = *SampleData<uint32_t>(_geom.index_.Data(), _mesh.index_offset_, i+2);
+        for (uint64_t i = 0; i < _ib.count_; i += 3) {
+            auto i0 = *(static_cast<uint32_t*>(_ib.data_) + i);
+            auto i1 = *(static_cast<uint32_t*>(_ib.data_) + i+1);
+            auto i2 = *(static_cast<uint32_t*>(_ib.data_) + i+2);
 
             Lamp::Vec4f v0 = _uniform->mvp * Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
             Lamp::Vec4f v1 = _uniform->mvp * Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
@@ -113,15 +112,16 @@ namespace {
 }
 
 template<PixelFormat PF>
-void Render::Draw(Image<PF>& _render_target, const Geometry& _geom,
-          const Mesh& _mesh, const ShaderFootprint* _uniform) {
+void Render::Draw(Image<PF>& _render_target,
+                const VertexBuffer& _vb, const IndexBuffer& _ib,
+                const ShaderFootprint* _uniform) {
     switch (_uniform->sType) {
         case ShaderName::PointShader:
-            DrawPointShader(_render_target, _geom, _mesh,
+            DrawPointShader(_render_target, _vb, _ib,
                 reinterpret_cast<const Render::UMvp*>(_uniform));
             break;
         case ShaderName::LineShader:
-            DrawTriangleLineShader(_render_target, _geom, _mesh,
+            DrawTriangleLineShader(_render_target, _vb, _ib,
                 reinterpret_cast<const Render::UMvp*>(_uniform));
             break;
     }
