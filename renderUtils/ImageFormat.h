@@ -8,6 +8,7 @@
 enum class PixelFormat {
     R8G8B8 = 0,
     B8G8R8,
+    D16,
     Count
 };
 
@@ -73,6 +74,30 @@ struct Texel<PixelFormat::B8G8R8>{
 
     bool operator!=(const Texel& _r) const {
         return R != _r.R || G != _r.G || B != _r.B;
+    }
+};
+
+template<>
+struct Texel<PixelFormat::D16>{
+    uint16_t D;
+
+    Texel operator+(const Texel& _r) const {
+        Texel result;
+        result.D += _r.D;
+        return result;
+    }
+
+    Texel& operator+=(const Texel& _r) {
+        D += _r.D;
+        return *this;
+    }
+
+    bool operator==(const Texel& _r) const {
+        return D == _r.D;
+    }
+
+    bool operator!=(const Texel& _r) const {
+        return D != _r.D;
     }
 };
 #pragma pack(pop)
