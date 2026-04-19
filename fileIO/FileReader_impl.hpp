@@ -24,6 +24,12 @@ namespace {
     	Lamp::Vector<Lamp::Vec3f> uvs;
     	Lamp::Vector<uint32_t> indices;
         std::string buffer;
+
+        Lamp::Vec3f minimum = {std::numeric_limits<float>::max(),
+        						std::numeric_limits<float>::max(),
+        						std::numeric_limits<float>::max()};
+    	Lamp::Vec3f maximum = -minimum;
+
         while (getline(input_file, buffer)) {
             // If line is comment, skip.
             if ((*std::begin(buffer)) == '#')
@@ -58,6 +64,14 @@ namespace {
 
 					buffer_stream >> stream_segment;
 					vertex.z = std::stof(stream_segment);
+
+					_out_mesh.aabb.max.x = std::max(maximum.x, vertex.x);
+					_out_mesh.aabb.max.y = std::max(maximum.y, vertex.y);
+					_out_mesh.aabb.max.z = std::max(maximum.z, vertex.z);
+					_out_mesh.aabb.min.x = std::min(minimum.x, vertex.x);
+					_out_mesh.aabb.min.y = std::min(minimum.y, vertex.y);
+					_out_mesh.aabb.min.z = std::min(minimum.z, vertex.z);
+
 
 					// Push back dummies for attributes, so number of element for each vertex attributes
 					// matches the number of vertices even if there are duplicates.
