@@ -9,17 +9,19 @@ namespace {
         return reinterpret_cast<const T*>(_data + _offset + (sizeof(T) * _i));
     }
 
-    void ClipSpaceScreenSpace(Image& _render_target, Lamp::Vec4f& _v) {
+    void ClipSpaceScreenSpace(const RenderCmdInfo& _cmd_info, Lamp::Vec4f& _v) {
         _v /= _v.w;
 
-        const float f_width  = static_cast<float>(_render_target.Width());
-        const float f_height = static_cast<float>(_render_target.Height());
+        auto& view_port = _cmd_info.view_port_;
 
-        // Flipping y elements here, our window coordinates top left will be 0, 0. when it is -1, 1 in NDC.
-        const Lamp::Mat4f viewport_transform = Lamp::Mat4f::Translate(f_width * .5f, f_height * .5f, 0.0f)
-                                                * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, 1.0f);
+        const float f_width  = view_port->width;
+        const float f_height = view_port->height;
 
-        // TODO : How to deal with near and far plane?
+        const Lamp::Mat4f viewport_transform
+            = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
+                                     view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
+            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
+
         _v = viewport_transform * _v;
     }
 
@@ -37,7 +39,7 @@ namespace {
 
             v4 = uniform->mvp * v4;
 
-            ClipSpaceScreenSpace(render_target, v4);
+            ClipSpaceScreenSpace(_cmd_info, v4);
 
             constexpr uint8_t color[] = {255, 0, 255};
             if (v4.x > 0 && v4.x < render_target.Width() && v4.y > 0 && v4.y < render_target.Height()) {
@@ -56,9 +58,9 @@ namespace {
     // Copyright (c) Alois Zingl
     // The code (function "plotLine") Licensed under the MIT License
 
-    void plotLine(Image& _render_target, const Lamp::Vec4f& _start, const Lamp::Vec4f& _end) {
+    void plotLine(const RenderCmdInfo& _cmd_info, const Lamp::Vec4f& _start, const Lamp::Vec4f& _end) {
         constexpr uint8_t color[] = {255, 255, 0};
-
+        auto& render_target = _cmd_info.render_info_->_color_att->image_;
         int x0 = _start.x;
         int x1 = _end.x;
         int y0 = _start.y;
@@ -69,10 +71,10 @@ namespace {
         int dy = -abs(y1-y0), sy = y0<y1 ? 1 : -1;
         int err = dx+dy, e2; /* error value e_xy */
         for (;;){ /* loop */
-            if (x0 > 0 && x0 < _render_target.Width() && y0 > 0 && y0 < _render_target.Height()) {
-                void* ptr = static_cast<uint8_t *>(_render_target.Data())
-                            + ((_render_target.Width() * y0 + x0) * _render_target.Stride());
-                memcpy(ptr, color, _render_target.Stride());
+            if (x0 > 0 && x0 < render_target.Width() && y0 > 0 && y0 < render_target.Height()) {
+                void* ptr = static_cast<uint8_t *>(render_target.Data())
+                            + ((render_target.Width() * y0 + x0) * render_target.Stride());
+                memcpy(ptr, color, render_target.Stride());
             }
             e2 = 2*err;
             if (e2 >= dy) { /* e_xy+e_x > 0 */
@@ -104,18 +106,18 @@ namespace {
             Lamp::Vec4f v1 = uniform->mvp * Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
             Lamp::Vec4f v2 = uniform->mvp * Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
 
-            ClipSpaceScreenSpace(render_target, v0);
-            ClipSpaceScreenSpace(render_target, v1);
-            ClipSpaceScreenSpace(render_target, v2);
+            ClipSpaceScreenSpace(_cmd_info, v0);
+            ClipSpaceScreenSpace(_cmd_info, v1);
+            ClipSpaceScreenSpace(_cmd_info, v2);
 
             // TODO : exclude already rendered lines.
             auto l0 = v2 - v0;
             auto l1 = v1 - v2;
             auto l2 = v0 - v1;
 
-            plotLine(render_target, v0, v2);
-            plotLine(render_target, v2, v1);
-            plotLine(render_target, v1, v0);
+            plotLine(_cmd_info, v0, v2);
+            plotLine(_cmd_info, v2, v1);
+            plotLine(_cmd_info, v1, v0);
         }
     }
 }
