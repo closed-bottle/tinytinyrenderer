@@ -39,8 +39,12 @@ std::chrono::steady_clock::time_point TimeStamp::end_;
 TimeStamp gTimeStamp;
 TimeStamp& TimeStamp::instance = gTimeStamp;
 
-constexpr uint64_t width = 2048 * 4;
-constexpr uint64_t height = 2048 * 4;
+constexpr uint32_t x_resolution = 2048;
+constexpr uint32_t y_resolution = 2048;
+constexpr uint8_t x_count = 4;
+constexpr uint8_t y_count = 4;
+constexpr uint64_t width = x_resolution * x_count;
+constexpr uint64_t height = y_resolution * y_count;
 constexpr float near = 0.1f;
 constexpr float far  = 1000;
 constexpr int channel = 3;
@@ -83,37 +87,54 @@ int main(int argc, const char* argv[]) {
 		//1, &color_att_info, &depth_att_info
 		1, &color_att_info, nullptr
 	};
-
 	Pipeline render_pipeline = {WindingOrder::CCW, ShaderName::LineShader};
 
-	CommandBuff cmd_buff;
-	RenderCmd::BeginCmd(cmd_buff);
-	// Barrier is not implemented yet.
-	// Scissor is not implemented at this moment, and most likely will not implement.
-	Viewport viewport = {0, 0, width/4, height/4, near, far};
-	RenderCmd::SetViewport(cmd_buff, viewport);
-	RenderCmd::SetRenderInfo(cmd_buff, render_info);
-	RenderCmd::BeginRender(cmd_buff);
-	RenderCmd::BindPipeline(cmd_buff, render_pipeline);
+	for (uint8_t i = 0; i < x_count; ++i) {
+		for (uint8_t j = 0; j < y_count; ++j) {
+			Viewport viewport = {static_cast<float>(x_resolution) * i,
+								 static_cast<float>(y_resolution) * j, x_resolution, y_resolution, near, far};
 
-	RenderCmd::BindVertexBuffer(cmd_buff, pos_buffer, 0);
-	RenderCmd::BindIndexBuffer(cmd_buff, index_buffer, 0);
+			float rad = ((i * y_count) + j) / (static_cast<float>(x_count) * y_count - 1);
+			rad *= 2.0f * 3.141592f;
 
-	model = Lamp::Mat4f::Scale(4, 4, 4) * Lamp::Mat4f::Yaw(0.0f) * Lamp::Mat4f::Translate(0, 0, 0);
-	mvp = proj * view * model;
-	Render::UMvp u_mvp0 = {ShaderName::LineShader, mvp};
-	RenderCmd::BindUniform(cmd_buff, sizeof(u_mvp0), u_mvp0);
-	RenderCmd::DrawIndexed(cmd_buff, 0);
+			model = Lamp::Mat4f::Translate(0, 0, 0) *
+					Lamp::Mat4f::Pitch(rad) *
+				    Lamp::Mat4f::Scale(4, 4, 4);
 
-	RenderCmd::EndRender(cmd_buff);
-	RenderCmd::EndCmd(cmd_buff);
 
-	// Implement queue
-	// Submit queue
+			mvp = proj * view * model;
 
-	// Remove templates later for runtime format specification.
-	if (cmd_buff.IsExecutable())
-		cmd_buff.Execute();
+			CommandBuff cmd_buff;
+			RenderCmd::BeginCmd(cmd_buff);
+			// Barrier is not implemented yet.
+			// Scissor is not implemented at this moment, and most likely will not implement.
+
+			RenderCmd::SetViewport(cmd_buff, viewport);
+			RenderCmd::SetRenderInfo(cmd_buff, render_info);
+			RenderCmd::BeginRender(cmd_buff);
+			RenderCmd::BindPipeline(cmd_buff, render_pipeline);
+
+			RenderCmd::BindVertexBuffer(cmd_buff, pos_buffer, 0);
+			RenderCmd::BindIndexBuffer(cmd_buff, index_buffer, 0);
+
+			Render::UMvp u_mvp0 = {ShaderName::LineShader, mvp};
+			RenderCmd::BindUniform(cmd_buff, sizeof(u_mvp0), u_mvp0);
+			RenderCmd::DrawIndexed(cmd_buff, 0);
+
+			RenderCmd::EndRender(cmd_buff);
+			RenderCmd::EndCmd(cmd_buff);
+
+			// Implement queue
+			// Submit queue
+
+			// Remove templates later for runtime format specification.
+			if (cmd_buff.IsExecutable())
+				cmd_buff.Execute();
+			cmd_buff.Clear();
+		}
+	}
+
+
 
 	//FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);

@@ -32,6 +32,11 @@ namespace {
         // upper left = origin.
         auto& render_target = _cmd_info.render_info_->_color_att->image_;
         const auto& uniform = static_cast<const Render::UMvp*>(_cmd_info.uniform_);
+        auto& view_port = _cmd_info.view_port_;
+
+        const uint32_t uiwidth = view_port->width;
+        const uint32_t uiheight = view_port->height;
+
 
         for (uint64_t i = 0; i < _cmd_info.vertex_buffer_->count_; ++i) {
             auto v3 = *(static_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->data_) + (sizeof(Lamp::Vec3f) * i));
@@ -42,9 +47,12 @@ namespace {
             ClipSpaceScreenSpace(_cmd_info, v4);
 
             constexpr uint8_t color[] = {255, 0, 255};
-            if (v4.x > 0 && v4.x < render_target.Width() && v4.y > 0 && v4.y < render_target.Height()) {
+            if (v4.x >= view_port->x
+             && v4.x < view_port->x + uiwidth
+             && v4.y >= view_port->y
+             && v4.y < view_port->y + uiheight) {
                 void* ptr = static_cast<uint8_t *>(render_target.Data())
-                            + render_target.Width() * (uint32_t)v4.y + (uint32_t)v4.x;
+                            + uiwidth * (uint32_t)v4.y + (uint32_t)v4.x;
                 memcpy(ptr, color, render_target.Stride());
             }
         }
@@ -61,6 +69,12 @@ namespace {
     void plotLine(const RenderCmdInfo& _cmd_info, const Lamp::Vec4f& _start, const Lamp::Vec4f& _end) {
         constexpr uint8_t color[] = {255, 255, 0};
         auto& render_target = _cmd_info.render_info_->_color_att->image_;
+        auto& view_port = _cmd_info.view_port_;
+        const int x = view_port->x;
+        const int y = view_port->y;
+        const uint32_t uiwidth = view_port->width;
+        const uint32_t uiheight = view_port->height;
+
         int x0 = _start.x;
         int x1 = _end.x;
         int y0 = _start.y;
@@ -71,7 +85,7 @@ namespace {
         int dy = -abs(y1-y0), sy = y0<y1 ? 1 : -1;
         int err = dx+dy, e2; /* error value e_xy */
         for (;;){ /* loop */
-            if (x0 > 0 && x0 < render_target.Width() && y0 > 0 && y0 < render_target.Height()) {
+            if (x0 >= x && x0 < (x + uiwidth) && y0 >= y && y0 < (y + uiheight)) {
                 void* ptr = static_cast<uint8_t *>(render_target.Data())
                             + ((render_target.Width() * y0 + x0) * render_target.Stride());
                 memcpy(ptr, color, render_target.Stride());
