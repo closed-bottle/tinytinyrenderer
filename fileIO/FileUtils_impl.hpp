@@ -54,7 +54,7 @@ Lamp::Vector<uint8_t> FileUtils::RLE(const Image& _image) {
             header = 0;
             for (size_t i = 0; i < offset; ++i) {
                 result.push_back(header);
-                PushBytes(result, _image.Stride(), reinterpret_cast<uint8_t *>(&data[begin + i]));
+                PushBytes(result, _image.Stride(), reinterpret_cast<uint8_t *>(&data[begin + i * _image.Stride()]));
 
                 --n;
             }
@@ -67,7 +67,7 @@ Lamp::Vector<uint8_t> FileUtils::RLE(const Image& _image) {
             PushBytes(result, _image.Stride(), reinterpret_cast<uint8_t *>(&data[begin]));
         }
 
-        begin += offset;
+        begin += offset * _image.Stride();
     }
 
     return result;

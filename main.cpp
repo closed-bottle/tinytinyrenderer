@@ -39,8 +39,8 @@ std::chrono::steady_clock::time_point TimeStamp::end_;
 TimeStamp gTimeStamp;
 TimeStamp& TimeStamp::instance = gTimeStamp;
 
-constexpr int width = 64;
-constexpr int height = 64;
+constexpr int width = 2048;
+constexpr int height = 2048;
 constexpr float near = 0.1f;
 constexpr float far  = 1000;
 constexpr int channel = 3;
@@ -115,7 +115,7 @@ int main(int argc, const char* argv[])
 
 	//FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
-	FileWriter::WriteImageToFile<FFormat::TGACompressed>("depth.tga", depth_att);
+	//FileWriter::WriteImageToFile<FFormat::TGACompressed>("depth.tga", depth_att);
 
 	TimeStamp::End();
 	std::cout << "Total : " << TimeStamp::Duration() << std::endl;

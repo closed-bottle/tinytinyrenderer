@@ -136,10 +136,6 @@ namespace {
 				Lamp::Vector<uint8_t> bytes;
 				bytes = FileUtils::RLE<128>(_image);
 
-				//for (auto& b : bytes)
-				//	cout << (int)b << '\n';
-				//cout << endl;
-
 				Lamp::Vector<uint8_t> tga;
 
 
