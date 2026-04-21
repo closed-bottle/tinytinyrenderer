@@ -22,7 +22,7 @@ namespace {
         result = _mm_fmadd_ps(_c2, vv2, result);
         result = _mm_fmadd_ps(_c3, vv3, result);
 
-        _mm_store_ps(&_v.x, result);
+        _mm_storeu_ps(&_v.x, result);
     }
 #endif
     template<typename T>
