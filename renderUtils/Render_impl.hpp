@@ -3,7 +3,7 @@
 
 
 namespace {
-/*
+#ifdef USE_SIMD
     void MatrixVectorMul(const __m128& _c0, const __m128& _c1, const __m128& _c2, const __m128& _c3, Lamp::Vec4f& _v) {
         const float xx[] = {_v.x, _v.x, _v.x, _v.x};
         const float yy[] = {_v.y, _v.y, _v.y, _v.y};
@@ -24,7 +24,7 @@ namespace {
 
         _mm_store_ps(&_v.x, result);
     }
-*/
+#endif
     template<typename T>
     const T* SampleData(const uint8_t* _data, const uint64_t& _offset, const uint64_t& _i) {
         return reinterpret_cast<const T*>(_data + _offset + (sizeof(T) * _i));
@@ -57,7 +57,7 @@ namespace {
 
 
         for (uint64_t i = 0; i < _cmd_info.vertex_buffer_->count_; ++i) {
-            auto v3 = *(static_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->data_) + (sizeof(Lamp::Vec3f) * i));
+            auto v3 = *(reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data()) + (sizeof(Lamp::Vec3f) * i));
             Lamp::Vec4f v4 = {v3.x, v3.y, v3.z, 1};
 
             v4 = uniform->mvp * v4;
@@ -124,7 +124,7 @@ namespace {
     // Assume primitive is always triangle strip.
     // It can be added to template later if needed to implement other primitives.
     void DrawTriangleLineShader(const RenderCmdInfo& _cmd_info) {
-        const auto* vertices = static_cast<Lamp::Vec3f*>(_cmd_info.vertex_buffer_->data_);
+        const auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
         auto& render_target = _cmd_info.render_info_->_color_att->image_;
         auto& index_buffer = _cmd_info.index_buffer_;
         const auto& uniform = static_cast<const Render::UMvp*>(_cmd_info.uniform_);
@@ -137,12 +137,12 @@ namespace {
             = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
                                      view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
             * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
-
+#ifdef USE_SIMD
         __m128 c0 = _mm_load_ps((float*)&uniform->mvp.c0);
         __m128 c1 = _mm_load_ps((float*)&uniform->mvp.c1);
         __m128 c2 = _mm_load_ps((float*)&uniform->mvp.c2);
         __m128 c3 = _mm_load_ps((float*)&uniform->mvp.c3);
-
+#endif
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
             auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
             auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
@@ -151,15 +151,15 @@ namespace {
             Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
             Lamp::Vec4f v1 = Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
             Lamp::Vec4f v2 = Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
-/*
+#ifdef USE_SIMD
             MatrixVectorMul(c0, c1, c2, c3, v0);
             MatrixVectorMul(c0, c1, c2, c3, v1);
-            MatrixVectorMul(c0, c1, c2, c3, v2);*/
-
+            MatrixVectorMul(c0, c1, c2, c3, v2);
+#else
             v0 = uniform->mvp * v0;
             v1 = uniform->mvp * v1;
             v2 = uniform->mvp * v2;
-
+#endif
             ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
             ClipSpaceScreenSpace(_cmd_info, viewport_transform, v1);
             ClipSpaceScreenSpace(_cmd_info, viewport_transform, v2);

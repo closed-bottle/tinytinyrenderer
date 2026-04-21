@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 #include <chrono>
-#include <immintrin.h>
+#include "renderUtils/SIMD.h"
 
 #include "fileIO/FileReader.h"
 #include "fileIO/FileWriter.h"
@@ -65,7 +65,7 @@ int main(int argc, const char* argv[]) {
 
 
 	// TODO : Do SoA for device buffers.
-	VertexBuffer pos_buffer = {geom.vertex_.Data() + mesh.vertex_offset_, mesh.vertex_count_};
+	VertexBuffer pos_buffer(sizeof(Lamp::Vec3f),geom.vertex_.Data() + mesh.vertex_offset_, mesh.vertex_count_);
 	IndexBuffer index_buffer = {geom.index_.Data() + mesh.index_offset_, mesh.index_count_};
 
 	Memory image_memory(16 * (width * height * channel));
