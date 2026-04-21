@@ -22,7 +22,7 @@ namespace {
         result = _mm_fmadd_ps(_c2, vv2, result);
         result = _mm_fmadd_ps(_c3, vv3, result);
 
-        _mm_storeu_ps(&_v.x, result);
+        _mm_store_ps(&_v.x, result);
     }
 #endif
     template<typename T>
@@ -148,9 +148,9 @@ namespace {
             auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
             auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
 
-            Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
-            Lamp::Vec4f v1 = Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
-            Lamp::Vec4f v2 = Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
+            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
+            alignas(16) Lamp::Vec4f v1 = Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
+            alignas(16) Lamp::Vec4f v2 = Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
 #ifdef USE_SIMD
             MatrixVectorMul(c0, c1, c2, c3, v0);
             MatrixVectorMul(c0, c1, c2, c3, v1);
