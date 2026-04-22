@@ -7,16 +7,22 @@
 
 class Memory {
     Lamp::Vector<uint8_t> bytes_;
+    size_t offset_ = 0;
+    size_t align_ = 0;
+    uint8_t* data_ = nullptr;
 public:
     Memory() = delete;
 
-    explicit Memory(const size_t _size) {
-        bytes_.reserve(_size);
+    explicit Memory(const size_t _size, const size_t _align = 0) {
+        bytes_.reserve(_size + _align);
+        align_ = _align;
+        offset_ = _align - (reinterpret_cast<uint64_t>(bytes_.data()) % _align);
+        data_ = bytes_.data() + offset_;
     };
 
     size_t Size() const {return bytes_.size();}
-    uint8_t* Data() {return bytes_.data();}
-    const uint8_t* Data() const {return bytes_.data();}
+    uint8_t* Data() {return data_;}
+    const uint8_t* Data() const {return data_;}
 };
 
 
