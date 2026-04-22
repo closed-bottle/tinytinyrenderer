@@ -4,16 +4,13 @@
 
 namespace {
 #ifdef USE_SIMD
-    void MatrixVectorMul(const __m128& _c0, const __m128& _c1, const __m128& _c2, const __m128& _c3, Lamp::Vec4f& _v) {
-        const float xx[] = {_v.x, _v.x, _v.x, _v.x};
-        const float yy[] = {_v.y, _v.y, _v.y, _v.y};
-        const float zz[] = {_v.z, _v.z, _v.z, _v.z};
-        const float ww[] = {_v.w, _v.w, _v.w, _v.w};
-
-        const __m128 vv0 = _mm_load_ps(xx);
-        const __m128 vv1 = _mm_load_ps(yy);
-        const __m128 vv2 = _mm_load_ps(zz);
-        const __m128 vv3 = _mm_load_ps(ww);
+    void MatrixVectorMul(const __m128& _c0, const __m128& _c1, const __m128& _c2, const __m128& _c3,
+                         const float* _x, const float* _y, const float* _z, const float* _w,
+                         float* _out) {
+        const __m128 vv0 = _mm_load_ps(_x);
+        const __m128 vv1 = _mm_load_ps(_y);
+        const __m128 vv2 = _mm_load_ps(_z);
+        const __m128 vv3 = _mm_load_ps(_w);
 
         __m128 result = _mm_set_ps(0,0,0,0);
 
@@ -22,7 +19,7 @@ namespace {
         result = _mm_fmadd_ps(_c2, vv2, result);
         result = _mm_fmadd_ps(_c3, vv3, result);
 
-        _mm_store_ps(&_v.x, result);
+        _mm_store_ps(_out, result);
     }
 #endif
     template<typename T>
@@ -137,12 +134,36 @@ namespace {
             = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
                                      view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
             * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
+
+        // TODO: matrix multiplication duplicated on same vertices(indexed.)
+        // TODO: maybe don't need to apply mvp across every vertices in buffer,
+        // since index may refer to only some of the vertices in buffer.
+
+
+
 #ifdef USE_SIMD
+
+
+
+
         __m128 c0 = _mm_load_ps((float*)&uniform->mvp.c0);
         __m128 c1 = _mm_load_ps((float*)&uniform->mvp.c1);
         __m128 c2 = _mm_load_ps((float*)&uniform->mvp.c2);
         __m128 c3 = _mm_load_ps((float*)&uniform->mvp.c3);
-#endif
+
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; i += 3) {
+            auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
+            auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
+            auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
+
+            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
+            alignas(16) Lamp::Vec4f v1 = Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
+            alignas(16) Lamp::Vec4f v2 = Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
+
+            //MatrixVectorMul(c0, c1, c2, c3, v0);
+            //MatrixVectorMul(c0, c1, c2, c3, v1);
+            //MatrixVectorMul(c0, c1, c2, c3, v2);
+#else
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
             auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
             auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
@@ -151,11 +172,7 @@ namespace {
             alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
             alignas(16) Lamp::Vec4f v1 = Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
             alignas(16) Lamp::Vec4f v2 = Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
-#ifdef USE_SIMD
-            MatrixVectorMul(c0, c1, c2, c3, v0);
-            MatrixVectorMul(c0, c1, c2, c3, v1);
-            MatrixVectorMul(c0, c1, c2, c3, v2);
-#else
+
             v0 = uniform->mvp * v0;
             v1 = uniform->mvp * v1;
             v2 = uniform->mvp * v2;

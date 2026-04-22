@@ -19,6 +19,7 @@ struct RenderCmdInfo {
     const IndexBuffer* index_buffer_;
     const WindingOrder* front_face_;
     const ShaderName* shader_;
+    uint64_t first_index_ = 0;
 };
 
 struct RenderCmd {

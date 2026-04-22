@@ -29,6 +29,7 @@ void CommandBuff::Execute() {
             case CmdType::DrawIndexed:
                 // Color
                 // It should query number of attachmenets depending on the shader.
+                cmd_info.first_index_ = (reinterpret_cast<uint64_t>(exe.data_));
                 Render::Draw(cmd_info);
                 // Depth
                 break;
