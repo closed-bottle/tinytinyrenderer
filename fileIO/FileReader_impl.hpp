@@ -141,20 +141,32 @@ namespace {
 
 
     	// Don't forget to consider alignment when merging multiple memories.
-    	_out_geom.vertex_ = Memory(sizeof(Lamp::Vec3f) * vertices.size() + alignof(Lamp::Vec3f));
-    	_out_geom.vertex_normal_ = Memory(sizeof(Lamp::Vec3f) * vnormals.size() + alignof(Lamp::Vec3f));
-    	_out_geom.uv_ = Memory(sizeof(Lamp::Vec3f) * uvs.size() + alignof(Lamp::Vec3f));
-    	_out_geom.index_ = Memory(sizeof(uint32_t) * indices.size() + alignof(uint32_t));
+    	// Align them in 16 bytes address for SIMD.
+
+    	size_t valign;
+    	size_t ialign;// not in use for now
+#ifdef USE_SIMD
+    		valign = alignof(__m128);
+    		ialign = alignof(uint32_t);
+#else
+    		valign = alignof(Lamp::Vec3f);
+    		ialign = alignof(uint32_t);
+#endif
+
+    	_out_geom.vertex_ = Memory(sizeof(Lamp::Vec3f) * vertices.size() + valign);
+    	_out_geom.vertex_normal_ = Memory(sizeof(Lamp::Vec3f) * vnormals.size() + valign);
+    	_out_geom.uv_ = Memory(sizeof(Lamp::Vec3f) * uvs.size() + valign);
+    	_out_geom.index_ = Memory(sizeof(uint32_t) * indices.size() + valign);
 
     	_out_mesh.vertex_count_ = vertices.size();
     	_out_mesh.vertex_offset_
-    	= alignof(Lamp::Vec3f) - (reinterpret_cast<uint64_t>(_out_geom.vertex_.Data()) % alignof(Lamp::Vec3f));
+    	= valign - (reinterpret_cast<uint64_t>(_out_geom.vertex_.Data()) % valign);
     	_out_mesh.vnormal_count_ = vnormals.size();
     	_out_mesh.vnormal_offset_
-		= alignof(Lamp::Vec3f) - (reinterpret_cast<uint64_t>(_out_geom.vertex_normal_.Data()) % alignof(Lamp::Vec3f));
+		= valign - (reinterpret_cast<uint64_t>(_out_geom.vertex_normal_.Data()) % valign);
     	_out_mesh.index_count_ = indices.size();
     	_out_mesh.index_offset_
-    	= alignof(uint32_t) - (reinterpret_cast<uint64_t>(_out_geom.index_.Data()) % alignof(uint32_t));
+    	= ialign - (reinterpret_cast<uint64_t>(_out_geom.index_.Data()) % ialign);
 
     	memcpy(_out_geom.vertex_.Data() + _out_mesh.vertex_offset_,
 			vertices.data(),

@@ -121,8 +121,9 @@ namespace {
     // Assume primitive is always triangle strip.
     // It can be added to template later if needed to implement other primitives.
     void DrawTriangleLineShader(const RenderCmdInfo& _cmd_info) {
-        const auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
+        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
         auto& render_target = _cmd_info.render_info_->_color_att->image_;
+        auto& vertex_buffer = _cmd_info.vertex_buffer_;
         auto& index_buffer = _cmd_info.index_buffer_;
         const auto& uniform = static_cast<const Render::UMvp*>(_cmd_info.uniform_);
 
@@ -138,58 +139,76 @@ namespace {
         // TODO: matrix multiplication duplicated on same vertices(indexed.)
         // TODO: maybe don't need to apply mvp across every vertices in buffer,
         // since index may refer to only some of the vertices in buffer.
-
-
-
 #ifdef USE_SIMD
-
-
-
-
         __m128 c0 = _mm_load_ps((float*)&uniform->mvp.c0);
         __m128 c1 = _mm_load_ps((float*)&uniform->mvp.c1);
         __m128 c2 = _mm_load_ps((float*)&uniform->mvp.c2);
         __m128 c3 = _mm_load_ps((float*)&uniform->mvp.c3);
 
-        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; i += 3) {
-            auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
-            auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
-            auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
+        // Few things to consider :
+        // SIMD version will use more memory footprint because it uses pre-processed vertex.
+        // It might need alloc-dealloc every draw, so might be good choice to just allocating it
+        // during initialize.
 
-            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
-            alignas(16) Lamp::Vec4f v1 = Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
-            alignas(16) Lamp::Vec4f v2 = Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
+        // alignment and offset is already calculated for vertex.
+        Memory preprocess = Memory(_cmd_info.vertex_buffer_->count_);
+
+        // TODO: Don't forget to -1 and handle padding at the end.
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; i += 8) {
+            uint32_t index[8] = {};
+            alignas(16) Lamp::Vec4f v_simd[8] = {};
+            for (uint8_t j = 0; j < 8; ++j) {
+                index[j] = *(static_cast<uint32_t*>(index_buffer->data_) + j);
+                v_simd[j] = Lamp::Vec4f(vertices[index[j]].x, vertices[index[j]].y, vertices[index[j]].z, 1.0f);
+            }
 
             //MatrixVectorMul(c0, c1, c2, c3, v0);
             //MatrixVectorMul(c0, c1, c2, c3, v1);
             //MatrixVectorMul(c0, c1, c2, c3, v2);
+
+            for (uint8_t j = 0; j < 8; ++j) {
+                ClipSpaceScreenSpace(_cmd_info, viewport_transform, v_simd[j]);
+            }
+
+            //plotLine(_cmd_info, v0, v2);
+            //plotLine(_cmd_info, v2, v1);
+            //plotLine(_cmd_info, v1, v0);
+        }
 #else
+        Memory preprocess = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
+
+        uint32_t start = 0;
+        uint32_t end = 0;
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+        }
+
+        for (uint64_t i = start; i <= end; ++i) {
+            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
+            v0 = uniform->mvp * v0;
+            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
+
+            memcpy(preprocess.Data() + (i * sizeof(Lamp::Vec4f)), &v0, sizeof(Lamp::Vec4f));
+        }
+
+        auto new_verticecs = reinterpret_cast<const Lamp::Vec4f*>(preprocess.Data());
+
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
             auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
             auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
             auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
 
-            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
-            alignas(16) Lamp::Vec4f v1 = Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
-            alignas(16) Lamp::Vec4f v2 = Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
-
-            v0 = uniform->mvp * v0;
-            v1 = uniform->mvp * v1;
-            v2 = uniform->mvp * v2;
-#endif
-            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
-            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v1);
-            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v2);
-
-            // TODO : exclude already rendered lines.
-            auto l0 = v2 - v0;
-            auto l1 = v1 - v2;
-            auto l2 = v0 - v1;
+            alignas(16) Lamp::Vec4f v0 = new_verticecs[i0];
+            alignas(16) Lamp::Vec4f v1 = new_verticecs[i1];
+            alignas(16) Lamp::Vec4f v2 = new_verticecs[i2];
 
             plotLine(_cmd_info, v0, v2);
             plotLine(_cmd_info, v2, v1);
             plotLine(_cmd_info, v1, v0);
         }
+#endif
+
     }
 }
 
