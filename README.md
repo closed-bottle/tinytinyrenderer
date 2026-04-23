@@ -34,7 +34,7 @@ Current build only supports simple line drawing without triangle filling.
 Render | ![Alt text](media/suzanne_wireframe.png "Images") | ![Alt text](media/2cc524ed.png "Images") |
 --- |---------------------------------------------------|------------------------------------------|
 Before | 6.163932s                                         | 0.7941572s                               |
-After | 0.05273832s                                       | N/A                                      |
+After | 0.05273832s(More than 100x faster)                | 0.778068s(2%, without SIMD.)             |
 ### Credits
  The function "plotLine" adapted from :
  > "A Rasterizing Algorithm for Drawing Curves"
