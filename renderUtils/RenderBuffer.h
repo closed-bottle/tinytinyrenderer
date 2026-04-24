@@ -2,6 +2,8 @@
 #define TINYTINYRENDERER_RENDERBUFFER_H
 #include <cstdint>
 
+#include "SIMD.h"
+
 struct VertexBuffer {
     size_t stride_ = 0;
 #ifdef USE_SIMD
@@ -13,40 +15,49 @@ struct VertexBuffer {
     uint64_t count_ = 0;
 
 #ifdef USE_SIMD
-    constexpr const uint8_t* Data() const {return (mem_.Data() + offset_);}
-    constexpr uint8_t* Data() {return (mem_.Data() + offset_);}
+    const uint8_t* Data() const {return (mem_.Data() + offset_);}
+    uint8_t* Data() {return (mem_.Data() + offset_);}
 #else
     constexpr const uint8_t* Data() const {return data_;}
     constexpr uint8_t* Data() {return data_;}
 #endif
     VertexBuffer() = delete;
-    VertexBuffer(const size_t _stride, void* _data, const uint64_t _count)
+    VertexBuffer(const size_t _stride, void* _data, const uint64_t _vertex_count)
         : stride_(_stride),
 #ifdef USE_SIMD
-            // Adding padding to match count%8 == 0
-            mem_(_stride * (_count + (8 - (_count % 8))) + SIMD_REGISTER_WIDTH),
+            // Add padding so we can fetch 8 vertices at once + alignment for SIMD.
+            mem_(0),
+            count_(0)
 #else
             data_(static_cast<uint8_t*>(_data)),
+            count_(_vertex_count)
 #endif
-            count_(_count) {
+    {
 
 #ifdef USE_SIMD
-        offset_ = reinterpret_cast<uint64_t>(mem_.Data()) % SIMD_REGISTER_WIDTH;
+        offset_ = (SIMD_REGISTER_WIDTH
+                - reinterpret_cast<uint64_t>(mem_.Data()) % SIMD_REGISTER_WIDTH);
         // Rearrange them into :
         // Befoer     ->      After
         // X,Y,Z,X,Y,Z->X,X,X,X,X,X,X,X,X
 
+        // count_ is number of vertex,
+        // alloc_count is size in byte include padding.
+        count_ = _vertex_count;
+        auto alloc_count = (_vertex_count - 1) / SIMD_VECTOR_FETCH_PADDING;
+        alloc_count = (alloc_count + 1) * SIMD_VECTOR_FETCH_PADDING;
+        mem_ = Memory(offset_ + stride_ * (alloc_count));
 
+        auto dbg = 0;
         // Vec3
         if (_stride == 12) {
             // TODO: There should be better transpose algorithm.
 
-            for (uint64_t i = 0; i < _count; i += 8) {
+            for (uint64_t i = 0; i < _vertex_count; i += SIMD_VECTOR_FETCH_PADDING) {
                 // 1. Load 8 * Vec3, (8 * 12 bytes), think it as 6 * Vec4(which fits into 128 reg.)
                 // 2. Merge it into 3 * __m256(3 * 32 bytes) by insert.
 
                 // 1.
-
                 // data_ should be padded to 32 bytes(128 bit).
                 auto d256 = (__m128*)(reinterpret_cast<uint64_t>(_data) + (i * _stride));
                 __m256 chunk0, chunk1, chunk2;
@@ -67,16 +78,24 @@ struct VertexBuffer {
                 auto y = _mm256_shuffle_ps(merged01, merged23, _MM_SHUFFLE( 3,1,2,0));
                 auto z = _mm256_shuffle_ps(merged01, chunk2, _MM_SHUFFLE( 3,0,3,1));
 
-                memcpy(Data() + i, &x, 8 * sizeof(float));
-                memcpy(Data() + _count + i, &y, 8 * sizeof(float));
-                memcpy(Data() + (2 * _count) + i, &z, 8 * sizeof(float));
+                memcpy(Data() + sizeof(float) * i, &x, 8 * sizeof(float));
+                memcpy(Data() + sizeof(float) * (count_ + i), &y, 8 * sizeof(float));
+                memcpy(Data() + sizeof(float) * (2 * count_) + i, &z, 8 * sizeof(float));
+                dbg = i;
+            }
+            const uint64_t last_chunk = _vertex_count
+                                - (_vertex_count % SIMD_VECTOR_FETCH_PADDING)
+                                + SIMD_VECTOR_FETCH_PADDING;
+            // Handle last chunk of data separately, padding exists on the dst,
+            // but not in src.
+            for (uint64_t i = last_chunk; i < count_; ++i) {
+                Lamp::Vec3f* v = (static_cast<Lamp::Vec3f*>(_data) + i);
+
+                memcpy(Data() + i, &v->x, sizeof(float));
+                memcpy(Data() + sizeof(float) * (count_ + i), &v->y, sizeof(float));
+                memcpy(Data() + sizeof(float) * (2 * count_) + i, &v->z, sizeof(float));
             }
         }
-
-
-
-
-
 #else
 #endif
     }

@@ -121,7 +121,7 @@ namespace {
     // Assume primitive is always triangle strip.
     // It can be added to template later if needed to implement other primitives.
     void DrawTriangleLineShader(const RenderCmdInfo& _cmd_info) {
-        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
+
         auto& render_target = _cmd_info.render_info_->_color_att->image_;
         auto& vertex_buffer = _cmd_info.vertex_buffer_;
         auto& index_buffer = _cmd_info.index_buffer_;
@@ -131,50 +131,178 @@ namespace {
         const float f_width  = view_port->width;
         const float f_height = view_port->height;
 
-        const Lamp::Mat4f viewport_transform
+        Lamp::Mat4f viewport_transform
             = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
                                      view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
             * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
 
+        //viewport_transform = viewport_transform * uniform->mvp;
+        //viewport_transform = uniform->mvp;
         // TODO: matrix multiplication duplicated on same vertices(indexed.)
         // TODO: maybe don't need to apply mvp across every vertices in buffer,
         // since index may refer to only some of the vertices in buffer.
 #ifdef USE_SIMD
-        __m128 c0 = _mm_load_ps((float*)&uniform->mvp.c0);
-        __m128 c1 = _mm_load_ps((float*)&uniform->mvp.c1);
-        __m128 c2 = _mm_load_ps((float*)&uniform->mvp.c2);
-        __m128 c3 = _mm_load_ps((float*)&uniform->mvp.c3);
-
         // Few things to consider :
         // SIMD version will use more memory footprint because it uses pre-processed vertex.
         // It might need alloc-dealloc every draw, so might be good choice to just allocating it
         // during initialize.
 
         // alignment and offset is already calculated for vertex.
-        Memory preprocess = Memory(_cmd_info.vertex_buffer_->count_);
+        Memory preprocess = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
 
-        // TODO: Don't forget to -1 and handle padding at the end.
-        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; i += 8) {
-            uint32_t index[8] = {};
-            alignas(16) Lamp::Vec4f v_simd[8] = {};
-            for (uint8_t j = 0; j < 8; ++j) {
-                index[j] = *(static_cast<uint32_t*>(index_buffer->data_) + j);
-                v_simd[j] = Lamp::Vec4f(vertices[index[j]].x, vertices[index[j]].y, vertices[index[j]].z, 1.0f);
-            }
+        alignas(SIMD_REGISTER_WIDTH) const float ws[8] = { 1, 1, 1, 1, 1, 1, 1, 1};
 
-            //MatrixVectorMul(c0, c1, c2, c3, v0);
-            //MatrixVectorMul(c0, c1, c2, c3, v1);
-            //MatrixVectorMul(c0, c1, c2, c3, v2);
-
-            for (uint8_t j = 0; j < 8; ++j) {
-                ClipSpaceScreenSpace(_cmd_info, viewport_transform, v_simd[j]);
-            }
-
-            //plotLine(_cmd_info, v0, v2);
-            //plotLine(_cmd_info, v2, v1);
-            //plotLine(_cmd_info, v1, v0);
+        uint32_t start = 0;
+        uint32_t end = 0;
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
         }
+
+        // Exclude last 8 elements, so we don't use padded value.
+        uint64_t j = 0;
+        for (uint64_t i = start; i < end; i += 8, j += 8) {
+            auto* xs = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()
+                + sizeof(float) * i);
+            auto* ys = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()
+                + sizeof(float) * (i + vertex_buffer->count_));
+            auto* zs = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()
+                + sizeof(float) * (i + 2*(vertex_buffer->count_)));
+
+            __m256 c0 = _mm256_broadcast_ss(&uniform->mvp.c0.x);
+            __m256 c1 = _mm256_broadcast_ss(&uniform->mvp.c1.x);
+            __m256 c2 = _mm256_broadcast_ss(&uniform->mvp.c2.x);
+            __m256 c3 = _mm256_broadcast_ss(&uniform->mvp.c3.x);
+
+            // TODO: Noticed that anything not x component is not aligned.
+            // Aligned with SIMD_REGISTER_WIDTH.
+            __m256 xx = _mm256_load_ps( &xs[i]);
+            __m256 yy = _mm256_loadu_ps(&ys[i]);
+            __m256 zz = _mm256_loadu_ps(&zs[i]);
+            __m256 ww = _mm256_loadu_ps(ws);
+
+            __m256 clip_x = _mm256_mul_ps(c0, xx);
+            clip_x = _mm256_fmadd_ps(c1, yy, clip_x);
+            clip_x = _mm256_fmadd_ps(c2, zz, clip_x);
+            clip_x = _mm256_fmadd_ps(c3, ww, clip_x);
+
+            c0 = _mm256_broadcast_ss(&uniform->mvp.c0.y);
+            c1 = _mm256_broadcast_ss(&uniform->mvp.c1.y);
+            c2 = _mm256_broadcast_ss(&uniform->mvp.c2.y);
+            c3 = _mm256_broadcast_ss(&uniform->mvp.c3.y);
+
+            __m256 clip_y = _mm256_mul_ps(c0, xx);
+            clip_y = _mm256_fmadd_ps(c1, yy, clip_y);
+            clip_y = _mm256_fmadd_ps(c2, zz, clip_y);
+            clip_y = _mm256_fmadd_ps(c3, ww, clip_y);
+
+            c0 = _mm256_broadcast_ss(&uniform->mvp.c0.z);
+            c1 = _mm256_broadcast_ss(&uniform->mvp.c1.z);
+            c2 = _mm256_broadcast_ss(&uniform->mvp.c2.z);
+            c3 = _mm256_broadcast_ss(&uniform->mvp.c3.z);
+
+
+            __m256 clip_z = _mm256_mul_ps(c0, xx);
+            clip_z = _mm256_fmadd_ps(c1, yy, clip_z);
+            clip_z = _mm256_fmadd_ps(c2, zz, clip_z);
+            clip_z = _mm256_fmadd_ps(c3, ww, clip_z);
+
+            c0 = _mm256_broadcast_ss(&uniform->mvp.c0.w);
+            c1 = _mm256_broadcast_ss(&uniform->mvp.c1.w);
+            c2 = _mm256_broadcast_ss(&uniform->mvp.c2.w);
+            c3 = _mm256_broadcast_ss(&uniform->mvp.c3.w);
+
+
+            __m256 clip_w = _mm256_mul_ps(c0, xx);
+            clip_w = _mm256_fmadd_ps(c1, yy, clip_w);
+            clip_w = _mm256_fmadd_ps(c2, zz, clip_w);
+            clip_w = _mm256_fmadd_ps(c3, ww, clip_w);
+
+            xx = _mm256_div_ps(clip_x, clip_w);
+            yy = _mm256_div_ps(clip_y, clip_w);
+            zz = _mm256_div_ps(clip_z, clip_w);
+            ww = _mm256_div_ps(clip_w, clip_w);
+
+
+            c0 = _mm256_broadcast_ss(&viewport_transform.c0.x);
+            c1 = _mm256_broadcast_ss(&viewport_transform.c1.x);
+            c2 = _mm256_broadcast_ss(&viewport_transform.c2.x);
+            c3 = _mm256_broadcast_ss(&viewport_transform.c3.x);
+
+
+            __m256 view_x = _mm256_mul_ps(c0, xx);
+            view_x = _mm256_fmadd_ps(c1, yy, view_x);
+            view_x = _mm256_fmadd_ps(c2, zz, view_x);
+            view_x = _mm256_fmadd_ps(c3, ww, view_x);
+
+            c0 = _mm256_broadcast_ss(&viewport_transform.c0.y);
+            c1 = _mm256_broadcast_ss(&viewport_transform.c1.y);
+            c2 = _mm256_broadcast_ss(&viewport_transform.c2.y);
+            c3 = _mm256_broadcast_ss(&viewport_transform.c3.y);
+
+            __m256 view_y = _mm256_mul_ps(c0, xx);
+            view_y = _mm256_fmadd_ps(c1, yy, view_y);
+            view_y = _mm256_fmadd_ps(c2, zz, view_y);
+            view_y = _mm256_fmadd_ps(c3, ww, view_y);
+
+            c0 = _mm256_broadcast_ss(&viewport_transform.c0.z);
+            c1 = _mm256_broadcast_ss(&viewport_transform.c1.z);
+            c2 = _mm256_broadcast_ss(&viewport_transform.c2.z);
+            c3 = _mm256_broadcast_ss(&viewport_transform.c3.z);
+
+
+            __m256 view_z = _mm256_mul_ps(c0, xx);
+            view_z = _mm256_fmadd_ps(c1, yy, view_z);
+            view_z = _mm256_fmadd_ps(c2, zz, view_z);
+            view_z = _mm256_fmadd_ps(c3, ww, view_z);
+
+            c0 = _mm256_broadcast_ss(&viewport_transform.c0.w);
+            c1 = _mm256_broadcast_ss(&viewport_transform.c1.w);
+            c2 = _mm256_broadcast_ss(&viewport_transform.c2.w);
+            c3 = _mm256_broadcast_ss(&viewport_transform.c3.w);
+
+
+            __m256 view_w = _mm256_mul_ps(c0, xx);
+            view_w = _mm256_fmadd_ps(c1, yy, view_w);
+            view_w = _mm256_fmadd_ps(c2, zz, view_w);
+            view_w = _mm256_fmadd_ps(c3, ww, view_w);
+
+
+            _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
+                + sizeof(float) * j), view_x);
+            _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
+                + sizeof(float) * ((1* vertex_buffer->count_) + j)), view_y);
+            _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
+                + sizeof(float) * ((2* vertex_buffer->count_) + j)), view_z);
+            _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
+                + sizeof(float) * ((3* vertex_buffer->count_) + j)), view_w);
+        }
+
+
+
+        auto i_d = static_cast<uint8_t*>(index_buffer->data_);
+        const auto* x = reinterpret_cast<const float*>(preprocess.Data());
+        const auto* y = reinterpret_cast<const float*>(preprocess.Data() + sizeof(float) * (1 * vertex_buffer->count_));
+        const auto* z = reinterpret_cast<const float*>(preprocess.Data() + sizeof(float) * (2 * vertex_buffer->count_));
+        const auto* w = reinterpret_cast<const float*>(preprocess.Data() + sizeof(float) * (3 * vertex_buffer->count_));
+
+
+        for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
+            auto i0 = *reinterpret_cast<uint32_t*>(i_d + sizeof(uint32_t) * i);
+            auto i1 = *reinterpret_cast<uint32_t*>(i_d + sizeof(uint32_t) * (i+1));
+            auto i2 = *reinterpret_cast<uint32_t*>(i_d + sizeof(uint32_t) * (i+2));
+
+            alignas(16) Lamp::Vec4f v0 = {x[i0], y[i0], z[i0], w[i0]};
+            alignas(16) Lamp::Vec4f v1 = {x[i1], y[i1], z[i1], w[i1]};
+            alignas(16) Lamp::Vec4f v2 = {x[i2], y[i2], z[i2], w[i2]};
+
+            plotLine(_cmd_info, v0, v2);
+            plotLine(_cmd_info, v2, v1);
+            plotLine(_cmd_info, v1, v0);
+        }
+
 #else
+        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
         Memory preprocess = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
 
         uint32_t start = 0;
