@@ -164,6 +164,46 @@ namespace {
         count -= (count % SIMD_VECTOR_FETCH_PADDING);
         // Exclude last 8 elements, so we don't use padded value.
 
+
+
+        __m256 mvp[16] = {
+            _mm256_broadcast_ss(&uniform->mvp.c0.x),
+            _mm256_broadcast_ss(&uniform->mvp.c1.x),
+            _mm256_broadcast_ss(&uniform->mvp.c2.x),
+            _mm256_broadcast_ss(&uniform->mvp.c3.x),
+            _mm256_broadcast_ss(&uniform->mvp.c0.y),
+            _mm256_broadcast_ss(&uniform->mvp.c1.y),
+            _mm256_broadcast_ss(&uniform->mvp.c2.y),
+            _mm256_broadcast_ss(&uniform->mvp.c3.y),
+            _mm256_broadcast_ss(&uniform->mvp.c0.z),
+            _mm256_broadcast_ss(&uniform->mvp.c1.z),
+            _mm256_broadcast_ss(&uniform->mvp.c2.z),
+            _mm256_broadcast_ss(&uniform->mvp.c3.z),
+            _mm256_broadcast_ss(&uniform->mvp.c0.w),
+            _mm256_broadcast_ss(&uniform->mvp.c1.w),
+            _mm256_broadcast_ss(&uniform->mvp.c2.w),
+            _mm256_broadcast_ss(&uniform->mvp.c3.w)
+        };
+
+        __m256 viewport_t[16] = {
+            _mm256_broadcast_ss(&viewport_transform.c0.x),
+            _mm256_broadcast_ss(&viewport_transform.c1.x),
+            _mm256_broadcast_ss(&viewport_transform.c2.x),
+            _mm256_broadcast_ss(&viewport_transform.c3.x),
+            _mm256_broadcast_ss(&viewport_transform.c0.y),
+            _mm256_broadcast_ss(&viewport_transform.c1.y),
+            _mm256_broadcast_ss(&viewport_transform.c2.y),
+            _mm256_broadcast_ss(&viewport_transform.c3.y),
+            _mm256_broadcast_ss(&viewport_transform.c0.z),
+            _mm256_broadcast_ss(&viewport_transform.c1.z),
+            _mm256_broadcast_ss(&viewport_transform.c2.z),
+            _mm256_broadcast_ss(&viewport_transform.c3.z),
+            _mm256_broadcast_ss(&viewport_transform.c0.w),
+            _mm256_broadcast_ss(&viewport_transform.c1.w),
+            _mm256_broadcast_ss(&viewport_transform.c2.w),
+            _mm256_broadcast_ss(&viewport_transform.c3.w)
+        };
+
         auto* xs
             = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data());
         auto* ys
@@ -172,54 +212,35 @@ namespace {
             = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()) + 2*_cmd_info.vertex_buffer_->alloc_count_;
         uint64_t j = 0;
         for (uint64_t i = start; i < end && j < count; i += 8, j += 8) {
-            __m256 c0 = _mm256_broadcast_ss(&uniform->mvp.c0.x);
-            __m256 c1 = _mm256_broadcast_ss(&uniform->mvp.c1.x);
-            __m256 c2 = _mm256_broadcast_ss(&uniform->mvp.c2.x);
-            __m256 c3 = _mm256_broadcast_ss(&uniform->mvp.c3.x);
-
-            // TODO: Noticed that anything not x component is not aligned.
+            // Need more test on alignment, only tested with 2 meshes.
             // Aligned with SIMD_REGISTER_WIDTH.
-            __m256 xx = _mm256_loadu_ps(&xs[i]);
-            __m256 yy = _mm256_loadu_ps(&ys[i]);
-            __m256 zz = _mm256_loadu_ps(&zs[i]);
-            __m256 ww = _mm256_loadu_ps(ws);
+            __m256 xx = _mm256_load_ps(&xs[i]);
+            __m256 yy = _mm256_load_ps(&ys[i]);
+            __m256 zz = _mm256_load_ps(&zs[i]);
+            __m256 ww = _mm256_load_ps(ws);
 
-            __m256 clip_x = _mm256_mul_ps(c0, xx);
-            clip_x = _mm256_fmadd_ps(c1, yy, clip_x);
-            clip_x = _mm256_fmadd_ps(c2, zz, clip_x);
-            clip_x = _mm256_fmadd_ps(c3, ww, clip_x);
+            __m256 clip_x;
+            clip_x = _mm256_mul_ps(mvp[0], xx);
+            clip_x = _mm256_fmadd_ps(mvp[1], yy, clip_x);
+            clip_x = _mm256_fmadd_ps(mvp[2], zz, clip_x);
+            clip_x = _mm256_fmadd_ps(mvp[3], ww, clip_x);
 
-            c0 = _mm256_broadcast_ss(&uniform->mvp.c0.y);
-            c1 = _mm256_broadcast_ss(&uniform->mvp.c1.y);
-            c2 = _mm256_broadcast_ss(&uniform->mvp.c2.y);
-            c3 = _mm256_broadcast_ss(&uniform->mvp.c3.y);
+            __m256 clip_y;
+            clip_y = _mm256_mul_ps(mvp[4], xx);
+            clip_y = _mm256_fmadd_ps(mvp[5], yy, clip_y);
+            clip_y = _mm256_fmadd_ps(mvp[6], zz, clip_y);
+            clip_y = _mm256_fmadd_ps(mvp[7], ww, clip_y);
 
-            __m256 clip_y = _mm256_mul_ps(c0, xx);
-            clip_y = _mm256_fmadd_ps(c1, yy, clip_y);
-            clip_y = _mm256_fmadd_ps(c2, zz, clip_y);
-            clip_y = _mm256_fmadd_ps(c3, ww, clip_y);
+            __m256 clip_z;
+            clip_z = _mm256_mul_ps(mvp[8], xx);
+            clip_z = _mm256_fmadd_ps(mvp[9], yy, clip_z);
+            clip_z = _mm256_fmadd_ps(mvp[10], zz, clip_z);
+            clip_z = _mm256_fmadd_ps(mvp[11], ww, clip_z);
 
-            c0 = _mm256_broadcast_ss(&uniform->mvp.c0.z);
-            c1 = _mm256_broadcast_ss(&uniform->mvp.c1.z);
-            c2 = _mm256_broadcast_ss(&uniform->mvp.c2.z);
-            c3 = _mm256_broadcast_ss(&uniform->mvp.c3.z);
-
-
-            __m256 clip_z = _mm256_mul_ps(c0, xx);
-            clip_z = _mm256_fmadd_ps(c1, yy, clip_z);
-            clip_z = _mm256_fmadd_ps(c2, zz, clip_z);
-            clip_z = _mm256_fmadd_ps(c3, ww, clip_z);
-
-            c0 = _mm256_broadcast_ss(&uniform->mvp.c0.w);
-            c1 = _mm256_broadcast_ss(&uniform->mvp.c1.w);
-            c2 = _mm256_broadcast_ss(&uniform->mvp.c2.w);
-            c3 = _mm256_broadcast_ss(&uniform->mvp.c3.w);
-
-
-            __m256 clip_w = _mm256_mul_ps(c0, xx);
-            clip_w = _mm256_fmadd_ps(c1, yy, clip_w);
-            clip_w = _mm256_fmadd_ps(c2, zz, clip_w);
-            clip_w = _mm256_fmadd_ps(c3, ww, clip_w);
+            __m256 clip_w = _mm256_mul_ps(mvp[12], xx);
+            clip_w = _mm256_fmadd_ps(mvp[13], yy, clip_w);
+            clip_w = _mm256_fmadd_ps(mvp[14], zz, clip_w);
+            clip_w = _mm256_fmadd_ps(mvp[15], ww, clip_w);
 
             xx = _mm256_div_ps(clip_x, clip_w);
             yy = _mm256_div_ps(clip_y, clip_w);
@@ -227,48 +248,29 @@ namespace {
             ww = _mm256_div_ps(clip_w, clip_w);
 
 
-            c0 = _mm256_broadcast_ss(&viewport_transform.c0.x);
-            c1 = _mm256_broadcast_ss(&viewport_transform.c1.x);
-            c2 = _mm256_broadcast_ss(&viewport_transform.c2.x);
-            c3 = _mm256_broadcast_ss(&viewport_transform.c3.x);
+            __m256 view_x;
+            view_x = _mm256_mul_ps(viewport_t[0], xx);
+            view_x = _mm256_fmadd_ps(viewport_t[1], yy, view_x);
+            view_x = _mm256_fmadd_ps(viewport_t[2], zz, view_x);
+            view_x = _mm256_fmadd_ps(viewport_t[3], ww, view_x);
 
+            __m256 view_y;
+            view_y = _mm256_mul_ps(viewport_t[4], xx);
+            view_y = _mm256_fmadd_ps(viewport_t[5], yy, view_y);
+            view_y = _mm256_fmadd_ps(viewport_t[6], zz, view_y);
+            view_y = _mm256_fmadd_ps(viewport_t[7], ww, view_y);
 
-            __m256 view_x = _mm256_mul_ps(c0, xx);
-            view_x = _mm256_fmadd_ps(c1, yy, view_x);
-            view_x = _mm256_fmadd_ps(c2, zz, view_x);
-            view_x = _mm256_fmadd_ps(c3, ww, view_x);
+            __m256 view_z;
+            view_z = _mm256_mul_ps(viewport_t[8], xx);
+            view_z = _mm256_fmadd_ps(viewport_t[9], yy, view_z);
+            view_z = _mm256_fmadd_ps(viewport_t[10], zz, view_z);
+            view_z = _mm256_fmadd_ps(viewport_t[11], ww, view_z);
 
-            c0 = _mm256_broadcast_ss(&viewport_transform.c0.y);
-            c1 = _mm256_broadcast_ss(&viewport_transform.c1.y);
-            c2 = _mm256_broadcast_ss(&viewport_transform.c2.y);
-            c3 = _mm256_broadcast_ss(&viewport_transform.c3.y);
-
-            __m256 view_y = _mm256_mul_ps(c0, xx);
-            view_y = _mm256_fmadd_ps(c1, yy, view_y);
-            view_y = _mm256_fmadd_ps(c2, zz, view_y);
-            view_y = _mm256_fmadd_ps(c3, ww, view_y);
-
-            c0 = _mm256_broadcast_ss(&viewport_transform.c0.z);
-            c1 = _mm256_broadcast_ss(&viewport_transform.c1.z);
-            c2 = _mm256_broadcast_ss(&viewport_transform.c2.z);
-            c3 = _mm256_broadcast_ss(&viewport_transform.c3.z);
-
-
-            __m256 view_z = _mm256_mul_ps(c0, xx);
-            view_z = _mm256_fmadd_ps(c1, yy, view_z);
-            view_z = _mm256_fmadd_ps(c2, zz, view_z);
-            view_z = _mm256_fmadd_ps(c3, ww, view_z);
-
-            c0 = _mm256_broadcast_ss(&viewport_transform.c0.w);
-            c1 = _mm256_broadcast_ss(&viewport_transform.c1.w);
-            c2 = _mm256_broadcast_ss(&viewport_transform.c2.w);
-            c3 = _mm256_broadcast_ss(&viewport_transform.c3.w);
-
-
-            __m256 view_w = _mm256_mul_ps(c0, xx);
-            view_w = _mm256_fmadd_ps(c1, yy, view_w);
-            view_w = _mm256_fmadd_ps(c2, zz, view_w);
-            view_w = _mm256_fmadd_ps(c3, ww, view_w);
+            __m256 view_w;
+            view_w = _mm256_mul_ps(viewport_t[12], xx);
+            view_w = _mm256_fmadd_ps(viewport_t[13], yy, view_w);
+            view_w = _mm256_fmadd_ps(viewport_t[14], zz, view_w);
+            view_w = _mm256_fmadd_ps(viewport_t[15], ww, view_w);
 
 
             _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
@@ -326,8 +328,7 @@ namespace {
             start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
             end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
         }
-        Lamp::Vec3f tester3[32];
-        memcpy(tester3, &vertices[0], sizeof(Lamp::Vec3f) * 32);
+
         for (uint64_t i = start; i <= end; ++i) {
             alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
             v0 = uniform->mvp * v0;

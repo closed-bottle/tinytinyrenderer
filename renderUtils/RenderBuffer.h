@@ -48,7 +48,6 @@ struct VertexBuffer {
         alloc_count_ = (alloc_count_ + 1) * SIMD_VECTOR_FETCH_PADDING;
         mem_ = Memory(offset_ + stride_ * (alloc_count_));
 
-        auto dbg = 0;
         // Vec3
         if (_stride == 12) {
             // TODO: There should be better transpose algorithm.
@@ -81,7 +80,6 @@ struct VertexBuffer {
                 memcpy(Data() + sizeof(float) * i, &x, 8 * sizeof(float));
                 memcpy(Data() + sizeof(float) * (1 * alloc_count_ + i), &y, 8 * sizeof(float));
                 memcpy(Data() + sizeof(float) * (2 * alloc_count_ + i), &z, 8 * sizeof(float));
-                dbg = i;
             }
             const uint64_t last_chunk = _vertex_count
                                 - (_vertex_count % SIMD_VECTOR_FETCH_PADDING)
