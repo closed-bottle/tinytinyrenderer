@@ -282,6 +282,19 @@ namespace {
         }
 
 
+        for (j; j < vertex_buffer->count_; ++j) {
+            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(xs[j], ys[j], zs[j], 1);
+            v0 = uniform->mvp * v0;
+            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
+
+
+            memcpy(preprocess.Data() + sizeof(float) * j, &v0.x, sizeof(float));
+            memcpy(preprocess.Data() + sizeof(float) * (1* vertex_buffer->count_ + j), &v0.y, sizeof(float));
+            memcpy(preprocess.Data() + sizeof(float) * (2* vertex_buffer->count_ + j), &v0.z, sizeof(float));
+            memcpy(preprocess.Data() + sizeof(float) * (3* vertex_buffer->count_ + j), &v0.w, sizeof(float));
+        }
+
+
 
         auto i_d = static_cast<uint8_t*>(index_buffer->data_);
         const auto* x = reinterpret_cast<const float*>(preprocess.Data());
