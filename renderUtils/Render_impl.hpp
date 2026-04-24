@@ -152,6 +152,7 @@ namespace {
 
         alignas(SIMD_REGISTER_WIDTH) const float ws[8] = { 1, 1, 1, 1, 1, 1, 1, 1};
 
+        // TODO : Maybe just do it while loading files.
         uint32_t start = 0;
         uint32_t end = 0;
         for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
@@ -159,16 +160,18 @@ namespace {
             end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
         }
 
+        uint32_t count = index_buffer->count_ ? (end - start) + 1 : 0;
+        count -= (count % SIMD_VECTOR_FETCH_PADDING);
         // Exclude last 8 elements, so we don't use padded value.
-        uint64_t j = 0;
-        for (uint64_t i = start; i < end; i += 8, j += 8) {
-            auto* xs = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()
-                + sizeof(float) * i);
-            auto* ys = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()
-                + sizeof(float) * (i + vertex_buffer->count_));
-            auto* zs = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()
-                + sizeof(float) * (i + 2*(vertex_buffer->count_)));
 
+        auto* xs
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data());
+        auto* ys
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()) + 1*_cmd_info.vertex_buffer_->alloc_count_;
+        auto* zs
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()) + 2*_cmd_info.vertex_buffer_->alloc_count_;
+        uint64_t j = 0;
+        for (uint64_t i = start; i < end && j < count; i += 8, j += 8) {
             __m256 c0 = _mm256_broadcast_ss(&uniform->mvp.c0.x);
             __m256 c1 = _mm256_broadcast_ss(&uniform->mvp.c1.x);
             __m256 c2 = _mm256_broadcast_ss(&uniform->mvp.c2.x);
@@ -176,7 +179,7 @@ namespace {
 
             // TODO: Noticed that anything not x component is not aligned.
             // Aligned with SIMD_REGISTER_WIDTH.
-            __m256 xx = _mm256_load_ps( &xs[i]);
+            __m256 xx = _mm256_loadu_ps(&xs[i]);
             __m256 yy = _mm256_loadu_ps(&ys[i]);
             __m256 zz = _mm256_loadu_ps(&zs[i]);
             __m256 ww = _mm256_loadu_ps(ws);
@@ -286,7 +289,6 @@ namespace {
         const auto* z = reinterpret_cast<const float*>(preprocess.Data() + sizeof(float) * (2 * vertex_buffer->count_));
         const auto* w = reinterpret_cast<const float*>(preprocess.Data() + sizeof(float) * (3 * vertex_buffer->count_));
 
-
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
             auto i0 = *reinterpret_cast<uint32_t*>(i_d + sizeof(uint32_t) * i);
             auto i1 = *reinterpret_cast<uint32_t*>(i_d + sizeof(uint32_t) * (i+1));
@@ -311,7 +313,8 @@ namespace {
             start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
             end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
         }
-
+        Lamp::Vec3f tester3[32];
+        memcpy(tester3, &vertices[0], sizeof(Lamp::Vec3f) * 32);
         for (uint64_t i = start; i <= end; ++i) {
             alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
             v0 = uniform->mvp * v0;

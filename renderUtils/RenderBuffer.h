@@ -13,7 +13,7 @@ struct VertexBuffer {
     uint8_t* data_ = nullptr;
 #endif
     uint64_t count_ = 0;
-
+    uint64_t alloc_count_ = 0; // Size of count that are actually used to allocate for padding.
 #ifdef USE_SIMD
     const uint8_t* Data() const {return (mem_.Data() + offset_);}
     uint8_t* Data() {return (mem_.Data() + offset_);}
@@ -44,9 +44,9 @@ struct VertexBuffer {
         // count_ is number of vertex,
         // alloc_count is size in byte include padding.
         count_ = _vertex_count;
-        auto alloc_count = (_vertex_count - 1) / SIMD_VECTOR_FETCH_PADDING;
-        alloc_count = (alloc_count + 1) * SIMD_VECTOR_FETCH_PADDING;
-        mem_ = Memory(offset_ + stride_ * (alloc_count));
+        alloc_count_ = (_vertex_count - 1) / SIMD_VECTOR_FETCH_PADDING;
+        alloc_count_ = (alloc_count_ + 1) * SIMD_VECTOR_FETCH_PADDING;
+        mem_ = Memory(offset_ + stride_ * (alloc_count_));
 
         auto dbg = 0;
         // Vec3
@@ -79,8 +79,8 @@ struct VertexBuffer {
                 auto z = _mm256_shuffle_ps(merged01, chunk2, _MM_SHUFFLE( 3,0,3,1));
 
                 memcpy(Data() + sizeof(float) * i, &x, 8 * sizeof(float));
-                memcpy(Data() + sizeof(float) * (count_ + i), &y, 8 * sizeof(float));
-                memcpy(Data() + sizeof(float) * (2 * count_) + i, &z, 8 * sizeof(float));
+                memcpy(Data() + sizeof(float) * (1 * alloc_count_ + i), &y, 8 * sizeof(float));
+                memcpy(Data() + sizeof(float) * (2 * alloc_count_ + i), &z, 8 * sizeof(float));
                 dbg = i;
             }
             const uint64_t last_chunk = _vertex_count
@@ -92,8 +92,8 @@ struct VertexBuffer {
                 Lamp::Vec3f* v = (static_cast<Lamp::Vec3f*>(_data) + i);
 
                 memcpy(Data() + i, &v->x, sizeof(float));
-                memcpy(Data() + sizeof(float) * (count_ + i), &v->y, sizeof(float));
-                memcpy(Data() + sizeof(float) * (2 * count_) + i, &v->z, sizeof(float));
+                memcpy(Data() + sizeof(float) * (alloc_count_ + i), &v->y, sizeof(float));
+                memcpy(Data() + sizeof(float) * (2 * alloc_count_) + i, &v->z, sizeof(float));
             }
         }
 #else
