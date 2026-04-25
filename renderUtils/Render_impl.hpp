@@ -164,44 +164,25 @@ namespace {
         count -= (count % SIMD_VECTOR_FETCH_PADDING);
         // Exclude last 8 elements, so we don't use padded value.
 
+        Lamp::Mat4f merged_mat = viewport_transform * uniform->mvp;
 
-
-        __m256 mvp[16] = {
-            _mm256_broadcast_ss(&uniform->mvp.c0.x),
-            _mm256_broadcast_ss(&uniform->mvp.c1.x),
-            _mm256_broadcast_ss(&uniform->mvp.c2.x),
-            _mm256_broadcast_ss(&uniform->mvp.c3.x),
-            _mm256_broadcast_ss(&uniform->mvp.c0.y),
-            _mm256_broadcast_ss(&uniform->mvp.c1.y),
-            _mm256_broadcast_ss(&uniform->mvp.c2.y),
-            _mm256_broadcast_ss(&uniform->mvp.c3.y),
-            _mm256_broadcast_ss(&uniform->mvp.c0.z),
-            _mm256_broadcast_ss(&uniform->mvp.c1.z),
-            _mm256_broadcast_ss(&uniform->mvp.c2.z),
-            _mm256_broadcast_ss(&uniform->mvp.c3.z),
-            _mm256_broadcast_ss(&uniform->mvp.c0.w),
-            _mm256_broadcast_ss(&uniform->mvp.c1.w),
-            _mm256_broadcast_ss(&uniform->mvp.c2.w),
-            _mm256_broadcast_ss(&uniform->mvp.c3.w)
-        };
-
-        __m256 viewport_t[16] = {
-            _mm256_broadcast_ss(&viewport_transform.c0.x),
-            _mm256_broadcast_ss(&viewport_transform.c1.x),
-            _mm256_broadcast_ss(&viewport_transform.c2.x),
-            _mm256_broadcast_ss(&viewport_transform.c3.x),
-            _mm256_broadcast_ss(&viewport_transform.c0.y),
-            _mm256_broadcast_ss(&viewport_transform.c1.y),
-            _mm256_broadcast_ss(&viewport_transform.c2.y),
-            _mm256_broadcast_ss(&viewport_transform.c3.y),
-            _mm256_broadcast_ss(&viewport_transform.c0.z),
-            _mm256_broadcast_ss(&viewport_transform.c1.z),
-            _mm256_broadcast_ss(&viewport_transform.c2.z),
-            _mm256_broadcast_ss(&viewport_transform.c3.z),
-            _mm256_broadcast_ss(&viewport_transform.c0.w),
-            _mm256_broadcast_ss(&viewport_transform.c1.w),
-            _mm256_broadcast_ss(&viewport_transform.c2.w),
-            _mm256_broadcast_ss(&viewport_transform.c3.w)
+        __m256 merged[16] = {
+            _mm256_broadcast_ss(&merged_mat.c0.x),
+            _mm256_broadcast_ss(&merged_mat.c1.x),
+            _mm256_broadcast_ss(&merged_mat.c2.x),
+            _mm256_broadcast_ss(&merged_mat.c3.x),
+            _mm256_broadcast_ss(&merged_mat.c0.y),
+            _mm256_broadcast_ss(&merged_mat.c1.y),
+            _mm256_broadcast_ss(&merged_mat.c2.y),
+            _mm256_broadcast_ss(&merged_mat.c3.y),
+            _mm256_broadcast_ss(&merged_mat.c0.z),
+            _mm256_broadcast_ss(&merged_mat.c1.z),
+            _mm256_broadcast_ss(&merged_mat.c2.z),
+            _mm256_broadcast_ss(&merged_mat.c3.z),
+            _mm256_broadcast_ss(&merged_mat.c0.w),
+            _mm256_broadcast_ss(&merged_mat.c1.w),
+            _mm256_broadcast_ss(&merged_mat.c2.w),
+            _mm256_broadcast_ss(&merged_mat.c3.w)
         };
 
         auto* xs
@@ -220,27 +201,28 @@ namespace {
             __m256 ww = _mm256_load_ps(ws);
 
             __m256 clip_x;
-            clip_x = _mm256_mul_ps(mvp[0], xx);
-            clip_x = _mm256_fmadd_ps(mvp[1], yy, clip_x);
-            clip_x = _mm256_fmadd_ps(mvp[2], zz, clip_x);
-            clip_x = _mm256_fmadd_ps(mvp[3], ww, clip_x);
+            clip_x = _mm256_mul_ps(merged[0], xx);
+            clip_x = _mm256_fmadd_ps(merged[1], yy, clip_x);
+            clip_x = _mm256_fmadd_ps(merged[2], zz, clip_x);
+            clip_x = _mm256_fmadd_ps(merged[3], ww, clip_x);
 
             __m256 clip_y;
-            clip_y = _mm256_mul_ps(mvp[4], xx);
-            clip_y = _mm256_fmadd_ps(mvp[5], yy, clip_y);
-            clip_y = _mm256_fmadd_ps(mvp[6], zz, clip_y);
-            clip_y = _mm256_fmadd_ps(mvp[7], ww, clip_y);
+            clip_y = _mm256_mul_ps(merged[4], xx);
+            clip_y = _mm256_fmadd_ps(merged[5], yy, clip_y);
+            clip_y = _mm256_fmadd_ps(merged[6], zz, clip_y);
+            clip_y = _mm256_fmadd_ps(merged[7], ww, clip_y);
 
             __m256 clip_z;
-            clip_z = _mm256_mul_ps(mvp[8], xx);
-            clip_z = _mm256_fmadd_ps(mvp[9], yy, clip_z);
-            clip_z = _mm256_fmadd_ps(mvp[10], zz, clip_z);
-            clip_z = _mm256_fmadd_ps(mvp[11], ww, clip_z);
+            clip_z = _mm256_mul_ps(merged[8], xx);
+            clip_z = _mm256_fmadd_ps(merged[9], yy, clip_z);
+            clip_z = _mm256_fmadd_ps(merged[10], zz, clip_z);
+            clip_z = _mm256_fmadd_ps(merged[11], ww, clip_z);
 
-            __m256 clip_w = _mm256_mul_ps(mvp[12], xx);
-            clip_w = _mm256_fmadd_ps(mvp[13], yy, clip_w);
-            clip_w = _mm256_fmadd_ps(mvp[14], zz, clip_w);
-            clip_w = _mm256_fmadd_ps(mvp[15], ww, clip_w);
+            __m256 clip_w;
+            clip_w = _mm256_mul_ps(merged[12], xx);
+            clip_w = _mm256_fmadd_ps(merged[13], yy, clip_w);
+            clip_w = _mm256_fmadd_ps(merged[14], zz, clip_w);
+            clip_w = _mm256_fmadd_ps(merged[15], ww, clip_w);
 
             xx = _mm256_div_ps(clip_x, clip_w);
             yy = _mm256_div_ps(clip_y, clip_w);
@@ -248,39 +230,14 @@ namespace {
             ww = _mm256_div_ps(clip_w, clip_w);
 
 
-            __m256 view_x;
-            view_x = _mm256_mul_ps(viewport_t[0], xx);
-            view_x = _mm256_fmadd_ps(viewport_t[1], yy, view_x);
-            view_x = _mm256_fmadd_ps(viewport_t[2], zz, view_x);
-            view_x = _mm256_fmadd_ps(viewport_t[3], ww, view_x);
-
-            __m256 view_y;
-            view_y = _mm256_mul_ps(viewport_t[4], xx);
-            view_y = _mm256_fmadd_ps(viewport_t[5], yy, view_y);
-            view_y = _mm256_fmadd_ps(viewport_t[6], zz, view_y);
-            view_y = _mm256_fmadd_ps(viewport_t[7], ww, view_y);
-
-            __m256 view_z;
-            view_z = _mm256_mul_ps(viewport_t[8], xx);
-            view_z = _mm256_fmadd_ps(viewport_t[9], yy, view_z);
-            view_z = _mm256_fmadd_ps(viewport_t[10], zz, view_z);
-            view_z = _mm256_fmadd_ps(viewport_t[11], ww, view_z);
-
-            __m256 view_w;
-            view_w = _mm256_mul_ps(viewport_t[12], xx);
-            view_w = _mm256_fmadd_ps(viewport_t[13], yy, view_w);
-            view_w = _mm256_fmadd_ps(viewport_t[14], zz, view_w);
-            view_w = _mm256_fmadd_ps(viewport_t[15], ww, view_w);
-
-
             _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
-                + sizeof(float) * j), view_x);
+                + sizeof(float) * j), clip_x);
             _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
-                + sizeof(float) * ((1* vertex_buffer->count_) + j)), view_y);
+                + sizeof(float) * ((1* vertex_buffer->count_) + j)), clip_y);
             _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
-                + sizeof(float) * ((2* vertex_buffer->count_) + j)), view_z);
+                + sizeof(float) * ((2* vertex_buffer->count_) + j)), clip_z);
             _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
-                + sizeof(float) * ((3* vertex_buffer->count_) + j)), view_w);
+                + sizeof(float) * ((3* vertex_buffer->count_) + j)), clip_w);
         }
 
 
