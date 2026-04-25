@@ -191,6 +191,8 @@ namespace {
             = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()) + 1*_cmd_info.vertex_buffer_->alloc_count_;
         auto* zs
             = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()) + 2*_cmd_info.vertex_buffer_->alloc_count_;
+        __m256 ww = _mm256_load_ps(ws);
+
         uint64_t j = 0;
         for (uint64_t i = start; i < end && j < count; i += 8, j += 8) {
             // Need more test on alignment, only tested with 2 meshes.
@@ -198,25 +200,29 @@ namespace {
             __m256 xx = _mm256_load_ps(&xs[i]);
             __m256 yy = _mm256_load_ps(&ys[i]);
             __m256 zz = _mm256_load_ps(&zs[i]);
-            __m256 ww = _mm256_load_ps(ws);
 
-            __m256 clip_x;
-            clip_x = _mm256_mul_ps(merged[0], xx);
-            clip_x = _mm256_fmadd_ps(merged[1], yy, clip_x);
-            clip_x = _mm256_fmadd_ps(merged[2], zz, clip_x);
-            clip_x = _mm256_fmadd_ps(merged[3], ww, clip_x);
 
-            __m256 clip_y;
-            clip_y = _mm256_mul_ps(merged[4], xx);
-            clip_y = _mm256_fmadd_ps(merged[5], yy, clip_y);
-            clip_y = _mm256_fmadd_ps(merged[6], zz, clip_y);
-            clip_y = _mm256_fmadd_ps(merged[7], ww, clip_y);
+            __m256* x = reinterpret_cast<__m256*>(preprocess.Data()
+                            + sizeof(float) * j);
+            __m256* y = reinterpret_cast<__m256*>(preprocess.Data()
+                            + sizeof(float) * ((1* vertex_buffer->count_) + j));
+            __m256* z = reinterpret_cast<__m256*>(preprocess.Data()
+                            + sizeof(float) * ((2* vertex_buffer->count_) + j));
 
-            __m256 clip_z;
-            clip_z = _mm256_mul_ps(merged[8], xx);
-            clip_z = _mm256_fmadd_ps(merged[9], yy, clip_z);
-            clip_z = _mm256_fmadd_ps(merged[10], zz, clip_z);
-            clip_z = _mm256_fmadd_ps(merged[11], ww, clip_z);
+            *x = _mm256_mul_ps(merged[0], xx);
+            *x = _mm256_fmadd_ps(merged[1], yy, *x);
+            *x = _mm256_fmadd_ps(merged[2], zz, *x);
+            *x = _mm256_fmadd_ps(merged[3], ww, *x);
+
+            *y = _mm256_mul_ps(merged[4], xx);
+            *y = _mm256_fmadd_ps(merged[5], yy, *y);
+            *y = _mm256_fmadd_ps(merged[6], zz, *y);
+            *y = _mm256_fmadd_ps(merged[7], ww, *y);
+
+            *z = _mm256_mul_ps(merged[8], xx);
+            *z = _mm256_fmadd_ps(merged[9], yy, *z);
+            *z = _mm256_fmadd_ps(merged[10], zz, *z);
+            *z = _mm256_fmadd_ps(merged[11], ww, *z);
 
             __m256 clip_w;
             clip_w = _mm256_mul_ps(merged[12], xx);
@@ -224,20 +230,9 @@ namespace {
             clip_w = _mm256_fmadd_ps(merged[14], zz, clip_w);
             clip_w = _mm256_fmadd_ps(merged[15], ww, clip_w);
 
-            xx = _mm256_div_ps(clip_x, clip_w);
-            yy = _mm256_div_ps(clip_y, clip_w);
-            zz = _mm256_div_ps(clip_z, clip_w);
-            ww = _mm256_div_ps(clip_w, clip_w);
-
-
-            _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
-                + sizeof(float) * j), clip_x);
-            _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
-                + sizeof(float) * ((1* vertex_buffer->count_) + j)), clip_y);
-            _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
-                + sizeof(float) * ((2* vertex_buffer->count_) + j)), clip_z);
-            _mm256_storeu_ps(reinterpret_cast<float*>(preprocess.Data()
-                + sizeof(float) * ((3* vertex_buffer->count_) + j)), clip_w);
+            _mm256_div_ps(*x, clip_w);
+            _mm256_div_ps(*y, clip_w);
+            _mm256_div_ps(*z, clip_w);
         }
 
 

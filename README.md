@@ -31,10 +31,10 @@ Current build only supports simple line drawing without triangle filling.
   - Scene #2 rendered in 8192*8192, 3 channels.
     - Attached scene is scale downed to 2048*2048.
 
-Render | ![Alt text](media/suzanne_wireframe.png "Images") | ![Alt text](media/2cc524ed.png "Images") |
---- |---------------------------------------------------|------------------------------------------|
-Before | 6.163932s                                         | 0.7941572s                               |
-After | 0.05273832s(More than 100x faster)                | 0.778068s(2%, without SIMD.)             |
+Render | ![Alt text](media/suzanne_wireframe.png "Images") | ![Alt text](media/2cc524ed.png "Images")          |
+--- |---------------------------------------------------|---------------------------------------------------|
+Before | 6.163932s                                         | 0.7941572s                                        |
+After | 0.05273832s(More than 100x faster)                | 0.7359066s(7%, without SIMD. 0.7408656s for SIMD) |
 ### Credits
  The function "plotLine" adapted from :
  > "A Rasterizing Algorithm for Drawing Curves"
