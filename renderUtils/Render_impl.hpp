@@ -148,7 +148,11 @@ namespace {
         // during initialize.
 
         // alignment and offset is already calculated for vertex.
-        Memory preprocess = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
+        auto preprocess_size = sizeof(Lamp::Vec4f) * (vertex_buffer->alloc_count_ + SIMD_REGISTER_WIDTH);
+        auto preprocess = Memory(preprocess_size);
+        memset(preprocess.Data(), 0, preprocess_size);
+        uint64_t offset = (SIMD_REGISTER_WIDTH - reinterpret_cast<uint64_t>(preprocess.Data()) % SIMD_REGISTER_WIDTH);
+        auto raster_data = &preprocess.Data()[offset];
 
         alignas(SIMD_REGISTER_WIDTH) const float ws[8] = { 1, 1, 1, 1, 1, 1, 1, 1};
 
@@ -185,44 +189,42 @@ namespace {
             _mm256_broadcast_ss(&merged_mat.c3.w)
         };
 
-        auto* xs
+        auto* in_x
             = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data());
-        auto* ys
-            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()) + 1*_cmd_info.vertex_buffer_->alloc_count_;
-        auto* zs
-            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data()) + 2*_cmd_info.vertex_buffer_->alloc_count_;
+        auto* in_y
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data())
+                + 1 *_cmd_info.vertex_buffer_->alloc_count_;
+        auto* in_z
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data())
+                + 2 *_cmd_info.vertex_buffer_->alloc_count_;
         __m256 ww = _mm256_load_ps(ws);
 
         uint64_t j = 0;
         for (uint64_t i = start; i < end && j < count; i += 8, j += 8) {
             // Need more test on alignment, only tested with 2 meshes.
             // Aligned with SIMD_REGISTER_WIDTH.
-            __m256 xx = _mm256_load_ps(&xs[i]);
-            __m256 yy = _mm256_load_ps(&ys[i]);
-            __m256 zz = _mm256_load_ps(&zs[i]);
+            __m256 xx = _mm256_load_ps(&in_x[i]);
+            __m256 yy = _mm256_load_ps(&in_y[i]);
+            __m256 zz = _mm256_load_ps(&in_z[i]);
 
+            alignas(32) __m256 out_x;
+            alignas(32) __m256 out_y;
+            alignas(32) __m256 out_z;
 
-            __m256* x = reinterpret_cast<__m256*>(preprocess.Data()
-                            + sizeof(float) * j);
-            __m256* y = reinterpret_cast<__m256*>(preprocess.Data()
-                            + sizeof(float) * ((1* vertex_buffer->count_) + j));
-            __m256* z = reinterpret_cast<__m256*>(preprocess.Data()
-                            + sizeof(float) * ((2* vertex_buffer->count_) + j));
+            out_x = _mm256_mul_ps(merged[0], xx);
+            out_x = _mm256_fmadd_ps(merged[1], yy, out_x);
+            out_x = _mm256_fmadd_ps(merged[2], zz, out_x);
+            out_x = _mm256_fmadd_ps(merged[3], ww, out_x);
 
-            *x = _mm256_mul_ps(merged[0], xx);
-            *x = _mm256_fmadd_ps(merged[1], yy, *x);
-            *x = _mm256_fmadd_ps(merged[2], zz, *x);
-            *x = _mm256_fmadd_ps(merged[3], ww, *x);
+            out_y = _mm256_mul_ps(merged[4], xx);
+            out_y = _mm256_fmadd_ps(merged[5], yy, out_y);
+            out_y = _mm256_fmadd_ps(merged[6], zz, out_y);
+            out_y = _mm256_fmadd_ps(merged[7], ww, out_y);
 
-            *y = _mm256_mul_ps(merged[4], xx);
-            *y = _mm256_fmadd_ps(merged[5], yy, *y);
-            *y = _mm256_fmadd_ps(merged[6], zz, *y);
-            *y = _mm256_fmadd_ps(merged[7], ww, *y);
-
-            *z = _mm256_mul_ps(merged[8], xx);
-            *z = _mm256_fmadd_ps(merged[9], yy, *z);
-            *z = _mm256_fmadd_ps(merged[10], zz, *z);
-            *z = _mm256_fmadd_ps(merged[11], ww, *z);
+            out_z = _mm256_mul_ps(merged[8], xx);
+            out_z = _mm256_fmadd_ps(merged[9], yy, out_z);
+            out_z = _mm256_fmadd_ps(merged[10], zz, out_z);
+            out_z = _mm256_fmadd_ps(merged[11], ww, out_z);
 
             __m256 clip_w;
             clip_w = _mm256_mul_ps(merged[12], xx);
@@ -230,40 +232,60 @@ namespace {
             clip_w = _mm256_fmadd_ps(merged[14], zz, clip_w);
             clip_w = _mm256_fmadd_ps(merged[15], ww, clip_w);
 
-            _mm256_div_ps(*x, clip_w);
-            _mm256_div_ps(*y, clip_w);
-            _mm256_div_ps(*z, clip_w);
+            out_x = _mm256_div_ps(out_x, clip_w);
+            out_y = _mm256_div_ps(out_y, clip_w);
+            out_z = _mm256_div_ps(out_z, clip_w);
+
+            memcpy(&raster_data[sizeof(float) * j], &out_x, sizeof(__m256));
+            memcpy(&raster_data[sizeof(float) * ((1 * vertex_buffer->alloc_count_) + j)], &out_y, sizeof(__m256));
+            memcpy(&raster_data[sizeof(float) * ((2 * vertex_buffer->alloc_count_) + j)], &out_x, sizeof(__m256));
+
         }
 
 
-        for (j; j < vertex_buffer->count_; ++j) {
-            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(xs[j], ys[j], zs[j], 1);
+        for (; j < vertex_buffer->count_; ++j) {
+            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(in_x[j], in_y[j], in_z[j], 1);
             v0 = uniform->mvp * v0;
             ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
 
 
-            memcpy(preprocess.Data() + sizeof(float) * j, &v0.x, sizeof(float));
-            memcpy(preprocess.Data() + sizeof(float) * (1* vertex_buffer->count_ + j), &v0.y, sizeof(float));
-            memcpy(preprocess.Data() + sizeof(float) * (2* vertex_buffer->count_ + j), &v0.z, sizeof(float));
-            memcpy(preprocess.Data() + sizeof(float) * (3* vertex_buffer->count_ + j), &v0.w, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * j], &v0.x, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * (1* vertex_buffer->alloc_count_ + j)], &v0.y, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * (2* vertex_buffer->alloc_count_ + j)], &v0.z, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * (3* vertex_buffer->alloc_count_ + j)], &v0.w, sizeof(float));
         }
 
 
 
         auto i_d = static_cast<uint8_t*>(index_buffer->data_);
-        const auto* x = reinterpret_cast<const float*>(preprocess.Data());
-        const auto* y = reinterpret_cast<const float*>(preprocess.Data() + sizeof(float) * (1 * vertex_buffer->count_));
-        const auto* z = reinterpret_cast<const float*>(preprocess.Data() + sizeof(float) * (2 * vertex_buffer->count_));
-        const auto* w = reinterpret_cast<const float*>(preprocess.Data() + sizeof(float) * (3 * vertex_buffer->count_));
+
+        uint8_t* x = raster_data;
+        uint8_t* y = &raster_data[sizeof(float) * (1 * vertex_buffer->alloc_count_)];
+        uint8_t* z = &raster_data[sizeof(float) * (2 * vertex_buffer->alloc_count_)];
+        uint8_t* w = &raster_data[sizeof(float) * (3 * vertex_buffer->alloc_count_)];
 
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
-            auto i0 = *reinterpret_cast<uint32_t*>(i_d + sizeof(uint32_t) * i);
-            auto i1 = *reinterpret_cast<uint32_t*>(i_d + sizeof(uint32_t) * (i+1));
-            auto i2 = *reinterpret_cast<uint32_t*>(i_d + sizeof(uint32_t) * (i+2));
+            uint32_t i0, i1, i2;
 
-            alignas(16) Lamp::Vec4f v0 = {x[i0], y[i0], z[i0], w[i0]};
-            alignas(16) Lamp::Vec4f v1 = {x[i1], y[i1], z[i1], w[i1]};
-            alignas(16) Lamp::Vec4f v2 = {x[i2], y[i2], z[i2], w[i2]};
+            memcpy(&i0, &i_d[sizeof(uint32_t) * (i+0)], sizeof(uint32_t));
+            memcpy(&i1, &i_d[sizeof(uint32_t) * (i+1)], sizeof(uint32_t));
+            memcpy(&i2, &i_d[sizeof(uint32_t) * (i+2)], sizeof(uint32_t));
+
+            alignas(16) Lamp::Vec4f v0, v1, v2;
+            memcpy(&v0.x, &x[sizeof(float) * i0], sizeof(float));
+            memcpy(&v0.y, &y[sizeof(float) * i0], sizeof(float));
+            memcpy(&v0.z, &z[sizeof(float) * i0], sizeof(float));
+            memcpy(&v0.w, &w[sizeof(float) * i0], sizeof(float));
+
+            memcpy(&v1.x, &x[sizeof(float) * i1], sizeof(float));
+            memcpy(&v1.y, &y[sizeof(float) * i1], sizeof(float));
+            memcpy(&v1.z, &z[sizeof(float) * i1], sizeof(float));
+            memcpy(&v1.w, &w[sizeof(float) * i1], sizeof(float));
+
+            memcpy(&v2.x, &x[sizeof(float) * i2], sizeof(float));
+            memcpy(&v2.y, &y[sizeof(float) * i2], sizeof(float));
+            memcpy(&v2.z, &z[sizeof(float) * i2], sizeof(float));
+            memcpy(&v2.w, &w[sizeof(float) * i2], sizeof(float));
 
             plotLine(_cmd_info, v0, v2);
             plotLine(_cmd_info, v2, v1);

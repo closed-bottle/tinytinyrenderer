@@ -35,8 +35,6 @@ struct VertexBuffer {
     {
 
 #ifdef USE_SIMD
-        offset_ = (SIMD_REGISTER_WIDTH
-                - reinterpret_cast<uint64_t>(mem_.Data()) % SIMD_REGISTER_WIDTH);
         // Rearrange them into :
         // Befoer     ->      After
         // X,Y,Z,X,Y,Z->X,X,X,X,X,X,X,X,X
@@ -44,9 +42,18 @@ struct VertexBuffer {
         // count_ is number of vertex,
         // alloc_count is size in byte include padding.
         count_ = _vertex_count;
+
+        // Force alloc_count to be multiple of SIMD vector fetch padding.
+        // Simply means that alloc count will be multiple of the number of
+        // vectors getting fetched at once.
         alloc_count_ = (_vertex_count - 1) / SIMD_VECTOR_FETCH_PADDING;
         alloc_count_ = (alloc_count_ + 1) * SIMD_VECTOR_FETCH_PADDING;
-        mem_ = Memory(offset_ + stride_ * (alloc_count_));
+
+        // Add SIMD register width per vertex attribute, so we can
+        // guarantee to have enough padding.
+        mem_ = Memory(stride_ * (alloc_count_ + SIMD_REGISTER_WIDTH));
+        offset_ = (SIMD_REGISTER_WIDTH
+                - reinterpret_cast<uint64_t>(mem_.Data()) % SIMD_REGISTER_WIDTH);
 
         // Vec3
         if (_stride == 12) {
