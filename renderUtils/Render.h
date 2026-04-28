@@ -8,6 +8,7 @@ struct RenderCmdInfo;
 enum class ShaderName {
     PointShader,
     LineShader,
+    RasterShader,
     Count
 };
 
@@ -18,8 +19,8 @@ public:
     struct ShaderFootprint {
         ShaderName sType = ShaderName::Count;
 
-        ShaderFootprint(const ShaderName& _sType) : sType(_sType) {}
-        virtual ~ShaderFootprint() {};
+        explicit ShaderFootprint(const ShaderName& _sType) : sType(_sType) {}
+        virtual ~ShaderFootprint() = default;
     };
 
     struct UMvp : ShaderFootprint {
