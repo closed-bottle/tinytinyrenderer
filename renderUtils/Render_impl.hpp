@@ -136,11 +136,6 @@ namespace {
                                      view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
             * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
 
-        //viewport_transform = viewport_transform * uniform->mvp;
-        //viewport_transform = uniform->mvp;
-        // TODO: matrix multiplication duplicated on same vertices(indexed.)
-        // TODO: maybe don't need to apply mvp across every vertices in buffer,
-        // since index may refer to only some of the vertices in buffer.
 #ifdef USE_SIMD
         // Few things to consider :
         // SIMD version will use more memory footprint because it uses pre-processed vertex.
@@ -239,7 +234,6 @@ namespace {
             memcpy(&raster_data[sizeof(float) * j], &out_x, sizeof(__m256));
             memcpy(&raster_data[sizeof(float) * ((1 * vertex_buffer->alloc_count_) + j)], &out_y, sizeof(__m256));
             memcpy(&raster_data[sizeof(float) * ((2 * vertex_buffer->alloc_count_) + j)], &out_x, sizeof(__m256));
-
         }
 
 
