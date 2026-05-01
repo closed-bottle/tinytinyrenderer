@@ -121,7 +121,6 @@ namespace {
     // Assume primitive is always triangle strip.
     // It can be added to template later if needed to implement other primitives.
     void DrawTriangleLineShader(const RenderCmdInfo& _cmd_info) {
-
         auto& render_target = _cmd_info.render_info_->_color_att->image_;
         auto& vertex_buffer = _cmd_info.vertex_buffer_;
         auto& index_buffer = _cmd_info.index_buffer_;
@@ -323,10 +322,117 @@ namespace {
 #endif
 
     }
+
+
+    void DrawRasterShader(const RenderCmdInfo& _cmd_info) {
+#ifdef USE_SIMD
+#else
+        auto& vertex_buffer = _cmd_info.vertex_buffer_;
+        auto& index_buffer = _cmd_info.index_buffer_;
+        const auto& uniform = dynamic_cast<const Render::UMvp*>(_cmd_info.uniform_);
+
+        auto& view_port = _cmd_info.view_port_;
+        const float f_width  = view_port->width;
+        const float f_height = view_port->height;
+
+        Lamp::Mat4f viewport_transform
+            = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
+                                     view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
+            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
+
+        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
+        auto preprocess = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
+        auto raster_data = preprocess.Data();
+
+        uint32_t start = 0;
+        uint32_t end = 0;
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+        }
+
+        for (uint64_t i = start; i <= end; ++i) {
+            alignas(16) auto v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
+            v0 = uniform->mvp * v0;
+            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
+
+            memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
+        }
+
+        auto& render_target = _cmd_info.render_info_->_color_att->image_;
+        auto new_vertices = reinterpret_cast<const Lamp::Vec4f*>(raster_data);
+        const int x = static_cast<int>(view_port->x);
+        const int y = static_cast<int>(view_port->y);
+        const auto uiwidth = static_cast<uint32_t>(view_port->width);
+        const auto uiheight = static_cast<uint32_t>(view_port->height);
+        for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
+            auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
+            auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
+            auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
+
+            alignas(16) Lamp::Vec4f v0 = new_vertices[i0];
+            alignas(16) Lamp::Vec4f v1 = new_vertices[i1];
+            alignas(16) Lamp::Vec4f v2 = new_vertices[i2];
+
+            AABB2i aabb;
+/*
+            aabb.min = {
+                static_cast<int>(std::min(std::min(v0.x, v1.x), v2.x)),
+                static_cast<int>(std::min(std::min(v0.x, v1.x), v2.x))
+            };
+            aabb.max = {
+                static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)),
+                static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y))
+            };
+*/
+            aabb.min = {
+                static_cast<int>(std::min(std::min(v0.x, v1.x), v2.x)),
+                static_cast<int>(std::min(std::min(v0.y, v1.y), v2.y))
+            };
+            aabb.max = {
+                static_cast<int>(std::max(std::max(v0.x, v1.x), v2.x)) + 1,
+                static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)) + 1
+            };
+
+            auto edge = [](const Lamp::Vec4f& _v0, const Lamp::Vec4f& _v1, const Lamp::Vec4f& _v2) {
+                return ((_v2.x - _v0.x) * (_v1.y - _v0.y) - (_v2.y - _v0.y) * (_v1.x - _v0.x)) >= 0;
+            };
+
+
+            for (int j = aabb.min.y; j < aabb.max.y; ++j) {
+                for (int k = aabb.min.x; k < aabb.max.x; ++k) {
+                    Lamp::Vec4f p = {static_cast<float>(k), static_cast<float>(j), 0, 0};
+
+                    bool is_inside;
+                    is_inside = edge(v0, v1, p);
+                    is_inside &= edge(v1, v2, p);
+                    is_inside &= edge(v2, v0, p);
+
+                    if (is_inside) {
+                        uint8_t color[] = {255, 0, 0};
+
+
+                        if (static_cast<int>(p.x) >= x
+                            && static_cast<int>(p.x) < x + uiwidth
+                            && static_cast<int>(p.y) >= y
+                            && static_cast<int>(p.y) < y + uiheight) {
+                            void* ptr = static_cast<uint8_t *>(render_target.Data())
+                                + (render_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                                * render_target.Stride();
+                            memcpy(ptr, color, render_target.Stride());
+                        }
+                    }
+                }
+            }
+        }
+
+
+#endif
+    }
 }
 
 
-void Render::Draw(const RenderCmdInfo& _cmd_info) {
+inline void Render::Draw(const RenderCmdInfo& _cmd_info) {
     switch (_cmd_info.uniform_->sType) {
         case ShaderName::PointShader:
             DrawPointShader(_cmd_info);
@@ -334,8 +440,12 @@ void Render::Draw(const RenderCmdInfo& _cmd_info) {
         case ShaderName::LineShader:
             DrawTriangleLineShader(_cmd_info);
             break;
+        case ShaderName::RasterShader:
+            DrawRasterShader(_cmd_info);
+            break;
         case ShaderName::Count:
             // Not implemented
             break;
+        default: ;
     }
 }

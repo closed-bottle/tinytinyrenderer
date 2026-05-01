@@ -13,6 +13,10 @@ struct AABB2 : public AABB<2> {
         Lamp::Vec2f max;
 };
 
+struct AABB2i : public AABB<2> {
+        Lamp::Vec2i min;
+        Lamp::Vec2i max;
+};
 
 struct AABB3 : public AABB<3> {
         Lamp::Vec3f min;
