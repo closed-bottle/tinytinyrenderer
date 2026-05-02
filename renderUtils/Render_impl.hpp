@@ -359,7 +359,9 @@ namespace {
             memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
         }
 
-        auto& render_target = _cmd_info.render_info_->_color_att->image_;
+        auto& color_target = _cmd_info.render_info_->_color_att->image_;
+        auto& depth_target = _cmd_info.render_info_->_depth_att->image_;
+
         auto new_vertices = reinterpret_cast<const Lamp::Vec4f*>(raster_data);
         const int x = static_cast<int>(view_port->x);
         const int y = static_cast<int>(view_port->y);
@@ -401,12 +403,13 @@ namespace {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
                     Lamp::Vec4f p = {static_cast<float>(k), static_cast<float>(j), 0, 0};
 
-
                     const float w0 = edge(v0, v1, p) / area;
                     const float w1 = edge(v1, v2, p) / area;
                     const float w2 = edge(v2, v0, p) / area;
 
                     bool is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
+
+                    p.z = w0 * v0.z + w1 * v1.z + w2 * v2.z;
 
                     uint8_t r[] = {0, 0, 255};
                     uint8_t g[] = {0, 255, 0};
@@ -421,10 +424,25 @@ namespace {
                             && static_cast<int>(p.x) < x + uiwidth
                             && static_cast<int>(p.y) >= y
                             && static_cast<int>(p.y) < y + uiheight) {
-                            void* ptr = static_cast<uint8_t *>(render_target.Data())
-                                + (render_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                                * render_target.Stride();
-                            memcpy(ptr, color, render_target.Stride());
+
+
+                            void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
+                            + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                            * depth_target.Stride();
+                            uint16_t depth;
+                            memcpy(&depth, depth_ptr, sizeof(uint16_t));
+
+                            // Depth test.
+                            // Potentially add depth compare op to pipeline.
+                            if (depth < p.z) {
+                                void* color_ptr = static_cast<uint8_t *>(color_target.Data())
+                                    + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                                    * color_target.Stride();
+
+                                depth = static_cast<uint16_t>(p.z);
+                                memcpy(color_ptr, color, color_target.Stride());
+                                memcpy(depth_ptr, &depth, depth_target.Stride());
+                            }
                         }
                     }
                 }

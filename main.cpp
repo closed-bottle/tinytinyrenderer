@@ -75,8 +75,7 @@ int main(int argc, const char* argv[]) {
 	Memory image_memory(16 * (width * height * channel));
 	memset(image_memory.Data(), 0, 16 * (width * height * channel));
 	Image color_att(image_memory, PixelFormat::B8G8R8, 0, width, height);
-	// TODO : Handle alignment? Why it works?
-	//Image depth_att(image_memory, PixelFormat::D16, (width * height * channel), width, height);
+	Image depth_att(image_memory, PixelFormat::D16, width * height * channel, width, height);
 
 	B8G8R8 clear_color = {0, 0, 0};
 	D16 clear_depth = {0};
@@ -85,13 +84,13 @@ int main(int argc, const char* argv[]) {
 		color_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,&clear_color
 	};
 
-	//AttInfo depth_att_info = {
-	//	depth_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE, &clear_depth
-	//};
+	AttInfo depth_att_info = {
+		depth_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE, &clear_depth
+	};
 
 	RenderInfo render_info = {
 		//1, &color_att_info, &depth_att_info
-		1, &color_att_info, nullptr
+		1, &color_att_info, &depth_att_info
 	};
 	Pipeline render_pipeline = {WindingOrder::CCW, ShaderName::RasterShader};
 
@@ -145,7 +144,7 @@ int main(int argc, const char* argv[]) {
 
 	//FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
-	//FileWriter::WriteImageToFile<FFormat::TGACompressed>("depth.tga", depth_att);
+	FileWriter::WriteImageToFile<FFormat::TGACompressed>("depth.tga", depth_att);
 
 	TimeStamp::End();
 	std::cout << "Total : " << TimeStamp::Duration() << std::endl;
