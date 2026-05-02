@@ -375,16 +375,6 @@ namespace {
             alignas(16) Lamp::Vec4f v2 = new_vertices[i2];
 
             AABB2i aabb;
-/*
-            aabb.min = {
-                static_cast<int>(std::min(std::min(v0.x, v1.x), v2.x)),
-                static_cast<int>(std::min(std::min(v0.x, v1.x), v2.x))
-            };
-            aabb.max = {
-                static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)),
-                static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y))
-            };
-*/
             aabb.min = {
                 static_cast<int>(std::min(std::min(v0.x, v1.x), v2.x)),
                 static_cast<int>(std::min(std::min(v0.y, v1.y), v2.y))
@@ -395,22 +385,37 @@ namespace {
             };
 
             auto edge = [](const Lamp::Vec4f& _v0, const Lamp::Vec4f& _v1, const Lamp::Vec4f& _v2) {
-                return ((_v2.x - _v0.x) * (_v1.y - _v0.y) - (_v2.y - _v0.y) * (_v1.x - _v0.x)) >= 0;
+                const Lamp::Vec2f a = {_v2.x - _v0.x, _v2.y - _v0.y}; //ab
+                const Lamp::Vec2f b = {_v1.x - _v0.x, _v1.y - _v0.y};//cd
+
+                // ad - bc.
+                return a.x * b.y - a.y * b.x;
             };
 
+            // Cross product == Area of parallelogram made with the area of triangle * 2.
+            // Note that this edge function basically does pseudo-cross product.
+            float area;
+            area = abs(edge(v0, v1, v2));
 
             for (int j = aabb.min.y; j < aabb.max.y; ++j) {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
                     Lamp::Vec4f p = {static_cast<float>(k), static_cast<float>(j), 0, 0};
 
-                    bool is_inside;
-                    is_inside = edge(v0, v1, p);
-                    is_inside &= edge(v1, v2, p);
-                    is_inside &= edge(v2, v0, p);
+
+                    const float w0 = edge(v0, v1, p) / area;
+                    const float w1 = edge(v1, v2, p) / area;
+                    const float w2 = edge(v2, v0, p) / area;
+
+                    bool is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
+
+                    uint8_t r[] = {0, 0, 255};
+                    uint8_t g[] = {0, 255, 0};
+                    uint8_t b[] = {255, 0, 0};
 
                     if (is_inside) {
-                        uint8_t color[] = {255, 0, 0};
-
+                        uint8_t color[] = {static_cast<uint8_t>(255 * w0),
+                                            static_cast<uint8_t>(255 * w1),
+                                            static_cast<uint8_t>(255 * w2)};
 
                         if (static_cast<int>(p.x) >= x
                             && static_cast<int>(p.x) < x + uiwidth
