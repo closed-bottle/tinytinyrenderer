@@ -35,6 +35,18 @@ namespace {
         _v = _viewport * _v;
     }
 
+    Lamp::Mat4f ViewportTransform(const Viewport& _viewport) {
+        const float f_width  = _viewport.width;
+        const float f_height = _viewport.height;
+
+        const Lamp::Mat4f viewport_transform
+            = Lamp::Mat4f::Translate(_viewport.x + f_width * .5f,
+                                     _viewport.y + f_height * .5f, (_viewport.far + _viewport.near) / 2.0f)
+            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (_viewport.far - _viewport.near) / 2.0f);
+
+        return viewport_transform;
+    }
+
     // Note that it is not the proper algorithm to plot points on the screen,
     // it is unstable due to the nature direct casting.
     // Only for quick demonstration.
@@ -42,19 +54,11 @@ namespace {
         // upper left = origin.
         auto& render_target = _cmd_info.render_info_->_color_att->image_;
         const auto& uniform = static_cast<const Render::UMvp*>(_cmd_info.uniform_);
-        auto& view_port = _cmd_info.view_port_;
 
+        auto& view_port = _cmd_info.view_port_;
         const uint32_t uiwidth = view_port->width;
         const uint32_t uiheight = view_port->height;
-
-        const float f_width  = view_port->width;
-        const float f_height = view_port->height;
-
-        const Lamp::Mat4f viewport_transform
-            = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
-                                     view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
-            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
-
+        Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
 
         for (uint64_t i = 0; i < _cmd_info.vertex_buffer_->count_; ++i) {
             auto v3 = *(reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data()) + (sizeof(Lamp::Vec3f) * i));
@@ -131,13 +135,7 @@ namespace {
         const auto& uniform = static_cast<const Render::UMvp*>(_cmd_info.uniform_);
 
         auto& view_port = _cmd_info.view_port_;
-        const float f_width  = view_port->width;
-        const float f_height = view_port->height;
-
-        Lamp::Mat4f viewport_transform
-            = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
-                                     view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
-            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
+        Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
 
 #ifdef USE_SIMD
         // Few things to consider :
@@ -337,13 +335,7 @@ namespace {
         const auto& uniform = dynamic_cast<const Render::UMvp*>(_cmd_info.uniform_);
 
         auto& view_port = _cmd_info.view_port_;
-        const float f_width  = view_port->width;
-        const float f_height = view_port->height;
-
-        Lamp::Mat4f viewport_transform
-            = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
-                                     view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
-            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
+        Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
 
         auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
         auto preprocess = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
