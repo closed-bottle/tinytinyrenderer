@@ -27,8 +27,11 @@ namespace {
         return reinterpret_cast<const T*>(_data + _offset + (sizeof(T) * _i));
     }
 
-    void ClipSpaceScreenSpace(const RenderCmdInfo& _cmd_info, const Lamp::Mat4f &_viewport, Lamp::Vec4f& _v) {
+    void ClipToNdc(Lamp::Vec4f &_v) {
         _v /= _v.w;
+    }
+
+    void NdcToWindow(const Lamp::Mat4f &_viewport, Lamp::Vec4f &_v) {
         _v = _viewport * _v;
     }
 
@@ -58,8 +61,9 @@ namespace {
             Lamp::Vec4f v4 = {v3.x, v3.y, v3.z, 1};
 
             v4 = uniform->mvp * v4;
+            ClipToNdc(v4);
+            NdcToWindow(viewport_transform, v4);
 
-            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v4);
 
             constexpr uint8_t color[] = {255, 0, 255};
             if (v4.x >= view_port->x
@@ -239,7 +243,7 @@ namespace {
         for (; j < vertex_buffer->count_; ++j) {
             alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(in_x[j], in_y[j], in_z[j], 1);
             v0 = uniform->mvp * v0;
-            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
+            ClipSpaceScreenSpace(viewport_transform, v0);
 
 
             memcpy(&raster_data[sizeof(float) * j], &v0.x, sizeof(float));
@@ -299,7 +303,8 @@ namespace {
         for (uint64_t i = start; i <= end; ++i) {
             alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
             v0 = uniform->mvp * v0;
-            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
+            ClipToNdc(v0);
+            NdcToWindow(viewport_transform, v0);
 
             memcpy(preprocess.Data() + (i * sizeof(Lamp::Vec4f)), &v0, sizeof(Lamp::Vec4f));
         }
@@ -354,7 +359,8 @@ namespace {
         for (uint64_t i = start; i <= end; ++i) {
             alignas(16) auto v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
             v0 = uniform->mvp * v0;
-            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
+            ClipToNdc(v0);
+            NdcToWindow(viewport_transform, v0);
 
             memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
         }
