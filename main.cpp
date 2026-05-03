@@ -51,7 +51,7 @@ constexpr uint8_t y_count = 1;
 constexpr uint64_t width = x_resolution * x_count;
 constexpr uint64_t height = y_resolution * y_count;
 constexpr float near = 0.1f;
-constexpr float far  = 1000;
+constexpr float far  = 100;
 constexpr int channel = 3;
 
 int main(int argc, const char* argv[]) {
@@ -62,9 +62,10 @@ int main(int argc, const char* argv[]) {
 	FileReader::LoadGeometryFile<FFormat::OBJ>("suzanne.obj", geom, mesh);
 
 	Lamp::Mat4f model = Lamp::Mat4f::Scale(5, 5, 5);
-	Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, false);
+	Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, true);
 	Lamp::Mat4f proj = Lamp::Mat4f::Perspective(3.141592/180.0f * 60.5f,
-		(float)width / height, 0.1f, 1000.0f);
+		static_cast<float>(width) / height, near, far);
+
 	auto mvp = proj * view * model;
 
 
@@ -105,10 +106,10 @@ int main(int argc, const char* argv[]) {
 
 			model = Lamp::Mat4f::Translate(0, 0, 0) *
 					Lamp::Mat4f::Pitch(rad) *
-				    Lamp::Mat4f::Scale(1, -1, 1);
+				    Lamp::Mat4f::Scale(4, 4, 4);
 
 
-			mvp = view * model;
+			mvp = proj * view * model;
 
 			CommandBuff cmd_buff;
 			RenderCmd::BeginCmd(cmd_buff);
