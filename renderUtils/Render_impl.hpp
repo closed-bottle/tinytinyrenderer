@@ -41,8 +41,8 @@ namespace {
 
         const Lamp::Mat4f viewport_transform
             = Lamp::Mat4f::Translate(_viewport.x + f_width * .5f,
-                                     _viewport.y + f_height * .5f, (_viewport.far + _viewport.near) / 2.0f)
-            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (_viewport.far - _viewport.near) / 2.0f);
+                                     _viewport.y + f_height * .5f, 0)
+            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, 1);
 
         return viewport_transform;
     }
@@ -341,6 +341,43 @@ namespace {
         auto preprocess = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
         auto raster_data = preprocess.Data();
 
+        auto& color_target = _cmd_info.render_info_->_color_att->image_;
+        auto& depth_target = _cmd_info.render_info_->_depth_att->image_;
+
+        const int x = static_cast<int>(view_port->x);
+        const int y = static_cast<int>(view_port->y);
+        const auto uiwidth = static_cast<uint32_t>(view_port->width);
+        const auto uiheight = static_cast<uint32_t>(view_port->height);
+
+        if (_cmd_info.render_info_->_color_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
+            //const auto& clear_color = _cmd_info.render_info_->_color_att->clear_val_;
+            constexpr uint8_t clear_color[] = {0, 0, 255};
+            for (int i = 0; i < uiheight; ++i) {
+                for (int j = 0; j < uiwidth; ++j) {
+                    void* color_ptr = static_cast<uint8_t *>(color_target.Data())
+                                + (color_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
+                                * color_target.Stride();
+
+                    memcpy(color_ptr, clear_color, color_target.Stride());
+                }
+            }
+        }
+
+        if (_cmd_info.render_info_->_depth_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
+            //const auto& clear_color = _cmd_info.render_info_->_color_att->clear_val_;
+            constexpr uint8_t clear_depth[] = {0xFF, 0xFF};
+            for (int i = 0; i < uiheight; ++i) {
+                for (int j = 0; j < uiwidth; ++j) {
+                    void* color_ptr = static_cast<uint8_t *>(depth_target.Data())
+                                + (depth_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
+                                * depth_target.Stride();
+
+                    memcpy(color_ptr, clear_depth, depth_target.Stride());
+                }
+            }
+        }
+
+
         uint32_t start = 0;
         uint32_t end = 0;
         for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
@@ -357,14 +394,10 @@ namespace {
             memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
         }
 
-        auto& color_target = _cmd_info.render_info_->_color_att->image_;
-        auto& depth_target = _cmd_info.render_info_->_depth_att->image_;
+
 
         auto new_vertices = reinterpret_cast<const Lamp::Vec4f*>(raster_data);
-        const int x = static_cast<int>(view_port->x);
-        const int y = static_cast<int>(view_port->y);
-        const auto uiwidth = static_cast<uint32_t>(view_port->width);
-        const auto uiheight = static_cast<uint32_t>(view_port->height);
+
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
             auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
             auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
@@ -405,15 +438,10 @@ namespace {
                     const float w1 = edge(v1, v2, p)/area;
                     const float w2 = edge(v2, v0, p)/area;
 
-                    bool is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
-
-
-                    uint8_t r[] = {0, 0, 255};
-                    uint8_t g[] = {0, 255, 0};
-                    uint8_t b[] = {255, 0, 0};
-
-                    if (is_inside) {
+                    // If inside triangle
+                    if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
                         p.z = w0 * v0.z + w1 * v1.z + w2 * v2.z;
+
 
                         uint8_t color[] = {static_cast<uint8_t>(255 * w0),
                                             static_cast<uint8_t>(255 * w1),
@@ -434,14 +462,16 @@ namespace {
                             // Depth test.
                             // Potentially add depth compare op to pipeline.
                             // There are no near/far plane clipping yet.
-                            if (depth < p.z) {
+
+                            // Multiply UNORM d16 depth with max uint16 value.
+                            const auto d16_depth = static_cast<uint16_t>(p.z * 0xFFFF);
+                            if (depth > d16_depth) {
                                 void* color_ptr = static_cast<uint8_t *>(color_target.Data())
                                     + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                                     * color_target.Stride();
 
-                                depth = static_cast<uint16_t>(p.z * 1000);
                                 memcpy(color_ptr, color, color_target.Stride());
-                                memcpy(depth_ptr, &depth, depth_target.Stride());
+                                memcpy(depth_ptr, &d16_depth, depth_target.Stride());
                             }
                         }
                     }
