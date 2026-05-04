@@ -422,7 +422,7 @@ namespace {
                 const Lamp::Vec2f b = {_v1.x - _v0.x, _v1.y - _v0.y};//cd
 
                 // ad - bc.
-                return a.x * b.y - a.y * b.x;
+                return static_cast<double>(a.x) * b.y - static_cast<double>(a.y) * b.x;
             };
 
             // Cross product == Area of parallelogram made with the area of triangle * 2.
@@ -442,7 +442,6 @@ namespace {
                     if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
                         double curr_depth = w0 * v0.z + w1 * v1.z + w2 * v2.z;
 
-
                         uint8_t color[] = {static_cast<uint8_t>(255 * w0),
                                             static_cast<uint8_t>(255 * w1),
                                             static_cast<uint8_t>(255 * w2)};
@@ -460,7 +459,18 @@ namespace {
 
                             const double d32_depth = 1.0 - curr_depth;
                             const auto f_depth = static_cast<float>(d32_depth);
-                            if (depth < d32_depth) {
+
+                            if (std::abs(depth - d32_depth) < 0.0001) {
+                                void* color_ptr = static_cast<uint8_t *>(color_target.Data())
+                                    + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                                    * color_target.Stride();
+
+                                uint8_t ddebug[] = {255, 255, 255};
+
+                                memcpy(color_ptr, ddebug, color_target.Stride());
+                                memcpy(depth_ptr, &f_depth, depth_target.Stride());
+                            }
+                            else if (depth < d32_depth) {
                                 void* color_ptr = static_cast<uint8_t *>(color_target.Data())
                                     + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                                     * color_target.Stride();

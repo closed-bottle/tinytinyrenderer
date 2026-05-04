@@ -39,15 +39,17 @@ std::chrono::steady_clock::time_point TimeStamp::start_;
 std::chrono::steady_clock::time_point TimeStamp::end_;
 TimeStamp gTimeStamp;
 TimeStamp& TimeStamp::instance = gTimeStamp;
-
-//constexpr uint32_t x_resolution = 2048;
-//constexpr uint32_t y_resolution = 2048;
-//constexpr uint8_t x_count = 4;
-//constexpr uint8_t y_count = 4;
-constexpr uint32_t x_resolution = 512;
-constexpr uint32_t y_resolution = 512;
+/*
+constexpr uint32_t x_resolution = 2048;
+constexpr uint32_t y_resolution = 2048;
+constexpr uint8_t x_count = 4;
+constexpr uint8_t y_count = 4;
+*/
+constexpr uint32_t x_resolution = 2*2048;
+constexpr uint32_t y_resolution = 2*2048;
 constexpr uint8_t x_count = 1;
 constexpr uint8_t y_count = 1;
+
 constexpr uint64_t width = x_resolution * x_count;
 constexpr uint64_t height = y_resolution * y_count;
 constexpr float near = 0.1f;
@@ -76,10 +78,10 @@ int main(int argc, const char* argv[]) {
 	Memory image_memory(16 * (width * height * channel));
 	memset(image_memory.Data(), 0, 16 * (width * height * channel));
 	Image color_att(image_memory, PixelFormat::B8G8R8, 0, width, height);
-	Image depth_att(image_memory, PixelFormat::D16, width * height * channel, width, height);
+	Image depth_att(image_memory, PixelFormat::D32, width * height * channel, width, height);
 
-	B8G8R8 clear_color = {0, 0, 0};
-	D16 clear_depth = {0};
+	B8G8R8 clear_color = {255, 0, 0};
+	D32 clear_depth = {0xFFFF};
 
 	AttInfo color_att_info = {
 		color_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,&clear_color
@@ -101,8 +103,8 @@ int main(int argc, const char* argv[]) {
 								 static_cast<float>(y_resolution) * j, x_resolution, y_resolution, near, far};
 
 			float rad;
-			rad = (static_cast<float>(i * y_count + j) / (static_cast<float>(x_count) * y_count));
-			rad *= 2.0f * 3.141592f;
+			rad = static_cast<float>(i * y_count + j) / (static_cast<float>(x_count) * y_count);
+			rad *= 360 * 3.141592/180.0f;
 
 			model = Lamp::Mat4f::Translate(0, 0, 0) *
 					Lamp::Mat4f::Pitch(rad) *
