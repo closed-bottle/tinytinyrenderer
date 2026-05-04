@@ -365,14 +365,14 @@ namespace {
 
         if (_cmd_info.render_info_->_depth_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
             //const auto& clear_color = _cmd_info.render_info_->_color_att->clear_val_;
-            constexpr uint8_t clear_depth[] = {0xFF, 0xFF};
+            constexpr uint8_t clear_depth[] = {0x00, 0x00, 0x00, 0x00};
             for (int i = 0; i < uiheight; ++i) {
                 for (int j = 0; j < uiwidth; ++j) {
-                    void* color_ptr = static_cast<uint8_t *>(depth_target.Data())
+                    void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
                                 + (depth_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
                                 * depth_target.Stride();
 
-                    memcpy(color_ptr, clear_depth, depth_target.Stride());
+                    memcpy(depth_ptr, clear_depth, depth_target.Stride());
                 }
             }
         }
@@ -427,51 +427,46 @@ namespace {
 
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
-            float area;
+            double area;
             area = edge(v0, v1, v2);
 
             for (int j = aabb.min.y; j < aabb.max.y; ++j) {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
                     Lamp::Vec4f p = {static_cast<float>(k), static_cast<float>(j), 0, 0};
 
-                    const float w0 = edge(v0, v1, p)/area;
-                    const float w1 = edge(v1, v2, p)/area;
-                    const float w2 = edge(v2, v0, p)/area;
+                    const double w0 = edge(v0, v1, p)/area;
+                    const double w1 = edge(v1, v2, p)/area;
+                    const double w2 = edge(v2, v0, p)/area;
 
                     // If inside triangle
                     if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                        p.z = w0 * v0.z + w1 * v1.z + w2 * v2.z;
+                        double curr_depth = w0 * v0.z + w1 * v1.z + w2 * v2.z;
 
 
                         uint8_t color[] = {static_cast<uint8_t>(255 * w0),
                                             static_cast<uint8_t>(255 * w1),
                                             static_cast<uint8_t>(255 * w2)};
 
-                        if (static_cast<int>(p.x) >= x
-                            && static_cast<int>(p.x) < x + uiwidth
-                            && static_cast<int>(p.y) >= y
-                            && static_cast<int>(p.y) < y + uiheight) {
-
-
+                        if (k >= x && k < x + uiwidth && j >= y && j < y + uiheight) {
                             void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
                             + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                             * depth_target.Stride();
-                            uint16_t depth;
-                            memcpy(&depth, depth_ptr, sizeof(uint16_t));
+                            float depth;
+                            memcpy(&depth, depth_ptr, sizeof(float));
 
                             // Depth test.
                             // Potentially add depth compare op to pipeline.
                             // There are no near/far plane clipping yet.
 
-                            // Multiply UNORM d16 depth with max uint16 value.
-                            const auto d16_depth = static_cast<uint16_t>(p.z * 0xFFFF);
-                            if (depth > d16_depth) {
+                            const double d32_depth = 1.0 - curr_depth;
+                            const auto f_depth = static_cast<float>(d32_depth);
+                            if (depth < d32_depth) {
                                 void* color_ptr = static_cast<uint8_t *>(color_target.Data())
                                     + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                                     * color_target.Stride();
 
                                 memcpy(color_ptr, color, color_target.Stride());
-                                memcpy(depth_ptr, &d16_depth, depth_target.Stride());
+                                memcpy(depth_ptr, &f_depth, depth_target.Stride());
                             }
                         }
                     }

@@ -9,6 +9,7 @@ enum class PixelFormat : size_t {
     R8G8B8,
     B8G8R8,
     D16,
+    D32,
     Count
 };
 
@@ -19,6 +20,7 @@ namespace {
         3, //R8G8B8
         3, //B8G8R8
         1, //D16
+        1, //D32
         0 //Count
     };
 
@@ -27,6 +29,7 @@ namespace {
         1 * elements_count[static_cast<size_t>(PixelFormat::R8G8B8)], //R8G8B8
         1 * elements_count[static_cast<size_t>(PixelFormat::B8G8R8)], //B8G8R8
         2 * elements_count[static_cast<size_t>(PixelFormat::D16)], //D16
+        4 * elements_count[static_cast<size_t>(PixelFormat::D32)], //D32
         0 //Count
     };
 }
@@ -136,6 +139,36 @@ struct D16 : Texel {
     }
 
     bool operator!=(const D16& _r) const {
+        return D != _r.D;
+    }
+};
+
+
+struct D32 : Texel {
+    uint32_t D;
+
+    D32(uint32_t _d) : D(_d) {}
+
+    constexpr PixelFormat Format() override {
+        return PixelFormat::D32;
+    }
+
+    D32 operator+(const D32& _r) const {
+        D32 result{0};
+        result.D += _r.D;
+        return result;
+    }
+
+    D32& operator+=(const D32& _r) {
+        D += _r.D;
+        return *this;
+    }
+
+    bool operator==(const D32& _r) const {
+        return D == _r.D;
+    }
+
+    bool operator!=(const D32& _r) const {
         return D != _r.D;
     }
 };
